@@ -1,0 +1,594 @@
+/**
+ * MÓDULO DE ACCIONES PARA JEFES
+ * Maneja las acciones de aprobación y denegación de solicitudes
+ * VERSIÓN MODIFICADA: Sin verificación de autenticación
+ * Este módulo procesa las acciones que los jefes realizan desde los enlaces de correo
+ */
+
+/**
+ * Función principal que maneja las acciones de los jefes desde parámetros URL
+ * @param {Object} e - Parámetros de la solicitud HTTP con action y id
+ * @returns {HtmlService.HtmlOutput} Interfaz HTML según la acción solicitada
+ */
+function manejarAccionJefe(e) {
+  // Extraer parámetros de la URL
+  var action = e.parameter.action;  // 'aprobar' o 'denegar'
+  var solicitudId = e.parameter.id; // ID único de la solicitud
+  
+  // Redirigir según la acción solicitada
+  if (action === 'aprobar') {
+    return aprobarSolicitud(solicitudId);
+  } else if (action === 'denegar') {
+    return mostrarFormularioDenegacion(solicitudId);
+  } else if (action === 'denegacionCompletada') {
+    return mostrarDenegacionCompletada(solicitudId);
+  }
+  
+  // Redirección por defecto si la acción no es reconocida
+  return HtmlService.createHtmlOutput('<script>window.location.href="' + ScriptApp.getService().getUrl() + '"</script>');
+}
+
+/**
+ * Procesa la aprobación completa de una solicitud
+ * VERSIÓN MODIFICADA: Sin verificación de permisos
+ * @param {string} solicitudId - ID único de la solicitud a aprobar
+ * @returns {HtmlService.HtmlOutput} Página de confirmación o error
+ */
+function aprobarSolicitud(solicitudId) {
+  try {
+    Logger.log('=== APROBANDO SOLICITUD: ' + solicitudId + ' ===');
+    
+    // 1. ACTUALIZAR ESTADO EN BASE DE DATOS - Cambiar a "Aprobado"
+    BaseDatos.actualizarEstadoSolicitud(solicitudId, 'Aprobado');
+    
+    // 2. OBTENER INFORMACIÓN COMPLETA DE LA SOLICITUD
+    var solicitud = BaseDatos.obtenerSolicitudCompletaPorId(solicitudId);
+    
+    // Validar que la solicitud existe
+    if (!solicitud) {
+      Logger.log('ERROR: Solicitud no encontrada');
+      return HtmlService.createHtmlOutput('Error: Solicitud no encontrada');
+    }
+    
+    Logger.log('Solicitud encontrada: ' + solicitud.nombre);
+    
+    // 3. GENERAR PDF FORMAL DE LA SOLICITUD APROBADA
+    var pdfBlob = GeneradorPDF.generarPDFDesdeSolicitud(solicitud);
+    
+    // 4. CONFIGURAR CORREO DE GESTIÓN (destinatario fijo)
+    var correosGestion = 'gestionhumana@constructoracentenario.com , ana.pelaez@constructoracentenario.com';
+    
+    // 5. BUSCAR ARCHIVO ADJUNTO ORIGINAL EN GOOGLE DRIVE
+    var archivoAdjuntoOriginal = null;
+    if (solicitud.archivo && solicitud.archivo !== '') {
+      try {
+        var files = DriveApp.getFilesByName(solicitud.archivo);
+        if (files.hasNext()) {
+          archivoAdjuntoOriginal = files.next();
+        }
+      } catch (e) {
+        Logger.log('Error al buscar archivo adjunto: ' + e.toString());
+      }
+    }
+    
+    // 6. PREPARAR ADJUNTOS PARA GESTIÓN (PDF + archivo original)
+    var adjuntosGestion = [pdfBlob];
+    if (archivoAdjuntoOriginal) {
+      adjuntosGestion.push(archivoAdjuntoOriginal);
+    }
+    
+    // 7. CREAR Y ENVIAR CORREO A GESTIÓN CON INFORMACIÓN COMPLETA
+    var mensajeAprobacion = `
+    <h2>✅ Solicitud Aprobada</h2>
+    <p>La siguiente solicitud ha sido <strong>APROBADA</strong> por el jefe inmediato:</p>
+    
+    <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
+      <h3>Información de la Solicitud</h3>
+      <p><strong>Solicitante:</strong> ${solicitud.nombre}</p>
+      <p><strong>Cédula:</strong> ${solicitud.cedula}</p>
+      <p><strong>Correo del solicitante:</strong> ${solicitud.correo || 'No disponible'}</p>
+      <p><strong>Cargo:</strong> ${solicitud.cargo}</p>
+      <p><strong>Tipo:</strong> ${solicitud.tipoSolicitud} - ${solicitud.detalle}</p>
+      <p><strong>Motivo de solicitud:</strong> ${solicitud.observaciones}</p>
+      <p><strong>Jefe que aprobó:</strong> ${solicitud.jefe}</p>
+      <p><strong>Fecha de aprobación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+      <p><strong>Archivo adjunto:</strong> ${solicitud.archivo ? 'Sí (' + solicitud.archivo + ')' : 'No'}</p>
+    </div>
+    
+    <p>Por favor proceda con la gestión correspondiente.</p>
+    <p><strong>Archivos adjuntos:</strong></p>
+    <ul>
+      <li>PDF con detalles de la solicitud aprobada</li>
+      ${solicitud.archivo ? '<li>Documento original adjuntado por el solicitante: ' + solicitud.archivo + '</li>' : ''}
+    </ul>
+    `;
+    
+    // Envío del correo a gestión
+    GmailApp.sendEmail(
+      correosGestion,
+      'Solicitud Aprobada - ' + solicitud.nombre,
+      'Ver contenido HTML para detalles. Los archivos adjuntos contienen la información completa.',
+      { 
+        htmlBody: mensajeAprobacion,
+        attachments: adjuntosGestion,
+        name: 'Sistema de Solicitudes - Aprobación'
+      }
+    );
+    
+    Logger.log('Correo enviado a gestión: ' + correosGestion);
+    
+    // 8. NOTIFICAR AL USUARIO SOLICITANTE SOBRE LA APROBACIÓN
+    if (solicitud.correo && Validacion.validarCorreo(solicitud.correo)) {
+      var mensajeUsuario = `
+      <h2>✅ Su Solicitud ha sido Aprobada</h2>
+      <p>Estimado/a ${solicitud.nombre},</p>
+      <p>Su solicitud de <strong>${solicitud.tipoSolicitud}</strong> ha sido <strong>APROBADA</strong> por su jefe inmediato.</p>
+      
+      <div style="background: #d4edda; padding: 15px; border-radius: 5px; margin: 15px 0;">
+        <h3>Detalles de la Solicitud Aprobada</h3>
+        <p><strong>Tipo:</strong> ${solicitud.detalle}</p>
+        <p><strong>Motivo de solicitud:</strong> ${solicitud.observaciones}</p>
+        <p><strong>Fecha de aprobación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+        <p><strong>Jefe que aprobó:</strong> ${solicitud.jefe}</p>
+      </div>
+      
+      <p>Su solicitud ha sido enviada al área de gestión para su procesamiento.</p>
+      <p><strong>Archivo PDF:</strong> Encuentre los detalles completos en el documento adjunto.</p>
+      <p style="color: #666; font-size: 12px;">ID de solicitud: ${solicitudId}</p>
+      `;
+      
+      GmailApp.sendEmail(
+        solicitud.correo,
+        '✅ Solicitud Aprobada - ' + solicitud.tipoSolicitud,
+        'Su solicitud ha sido aprobada. Ver el PDF adjunto para más detalles.',
+        { 
+          htmlBody: mensajeUsuario,
+          attachments: [pdfBlob],
+          name: 'Sistema de Solicitudes - Aprobación'
+        }
+      );
+      
+      Logger.log('Correo enviado al usuario: ' + solicitud.correo);
+    }
+    
+    // 9. MOSTRAR PÁGINA PARA ENVÍO DE CORREOS ADICIONALES
+    Logger.log('Mostrando página de envío adicional...');
+    return mostrarPaginaEnvioAdicional(solicitudId);
+    
+  } catch (error) {
+    Logger.log('ERROR en aprobarSolicitud: ' + error.toString());
+    return HtmlService.createHtmlOutput('Error al procesar la solicitud: ' + error.toString());
+  }
+}
+
+/**
+ * Muestra la interfaz para enviar correos adicionales después de aprobar
+ * @param {string} solicitudId - ID de la solicitud recién aprobada
+ * @returns {HtmlService.HtmlOutput} Página HTML para envíos adicionales
+ */
+function mostrarPaginaEnvioAdicional(solicitudId) {
+  var htmlOutput = HtmlService.createTemplateFromFile('PaginaEnvioAdicional');
+  htmlOutput.solicitudId = solicitudId;
+  return htmlOutput.evaluate();
+}
+
+/**
+ * Envía copias de la solicitud aprobada a correos adicionales
+ * VERSIÓN MODIFICADA: Sin verificación de permisos
+ * @param {string} solicitudId - ID de la solicitud aprobada
+ * @param {Array} correosAdicionales - Lista de correos para notificación
+ * @returns {Object} Resultado del envío con estadísticas
+ */
+function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
+  try {
+    Logger.log('=== ENVÍO REAL DE CORREOS ADICIONALES ===');
+    Logger.log('solicitudId: ' + solicitudId);
+    Logger.log('correosAdicionales: ' + JSON.stringify(correosAdicionales));
+    
+    // 1. OBTENER INFORMACIÓN ACTUALIZADA DE LA SOLICITUD
+    var solicitud = BaseDatos.obtenerSolicitudCompletaPorId(solicitudId);
+    if (!solicitud) {
+      Logger.log('ERROR: No se encontró la solicitud');
+      return {
+        success: false,
+        message: 'No se encontró la solicitud en la base de datos'
+      };
+    }
+    
+    Logger.log('Solicitud encontrada: ' + solicitud.nombre);
+    
+    // 2. GENERAR PDF PARA COMPARTIR
+    var pdfBlob = GeneradorPDF.generarPDFDesdeSolicitud(solicitud);
+    Logger.log('PDF generado correctamente');
+    
+    // 3. BUSCAR Y PREPARAR ARCHIVO ADJUNTO ORIGINAL
+    var archivoAdjuntoOriginal = null;
+    if (solicitud.archivo && solicitud.archivo.trim() !== '') {
+      try {
+        var files = DriveApp.getFilesByName(solicitud.archivo);
+        if (files.hasNext()) {
+          archivoAdjuntoOriginal = files.next();
+          Logger.log('Archivo adjunto encontrado: ' + solicitud.archivo);
+        }
+      } catch (e) {
+        Logger.log('Error al buscar archivo adjunto: ' + e.toString());
+      }
+    }
+    
+    // 4. PREPARAR PAQUETE DE ADJUNTOS
+    var adjuntos = [pdfBlob];
+    if (archivoAdjuntoOriginal) {
+      adjuntos.push(archivoAdjuntoOriginal);
+    }
+    
+    // 5. CREAR MENSAJE INFORMATIVO PARA CORREOS ADICIONALES
+    var mensajeAdicional = `
+    <h2>📋 Copia de Solicitud Aprobada</h2>
+    <p>Se le comparte una copia de la siguiente solicitud que ha sido <strong>APROBADA</strong>:</p>
+    
+    <div style="background: #e8f4fc; padding: 15px; border-radius: 5px; margin: 15px 0;">
+      <h3 style="color: #2c3e50; margin-top: 0;">Información de la Solicitud</h3>
+      <p><strong>Solicitante:</strong> ${solicitud.nombre}</p>
+      <p><strong>Cédula:</strong> ${solicitud.cedula}</p>
+      <p><strong>Correo del solicitante:</strong> ${solicitud.correo || 'No disponible'}</p>
+      <p><strong>Cargo:</strong> ${solicitud.cargo}</p>
+      <p><strong>Tipo:</strong> ${solicitud.tipoSolicitud} - ${solicitud.detalle}</p>
+      <p><strong>Motivo de solicitud:</strong> ${solicitud.observaciones}</p>
+      <p><strong>Jefe que aprobó:</strong> ${solicitud.jefe}</p>
+      <p><strong>Fecha de aprobación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+      <p><strong>Archivo adjunto:</strong> ${solicitud.archivo ? 'Sí (' + solicitud.archivo + ')' : 'No'}</p>
+    </div>
+    
+    <p><strong>Nota:</strong> Esta es una copia informativa. La solicitud ya ha sido enviada al área de gestión para su procesamiento.</p>
+    
+    <p><strong>Archivos adjuntos:</strong></p>
+    <ul>
+      <li>PDF con detalles de la solicitud aprobada</li>
+      ${solicitud.archivo ? '<li>Documento original adjuntado por el solicitante: ' + solicitud.archivo + '</li>' : ''}
+    </ul>
+    
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 20px 0;">
+    <p style="color: #6c757d; font-size: 12px; text-align: center;">
+      Este mensaje fue generado automáticamente por el Sistema de Gestión de Solicitudes.
+    </p>
+    `;
+    
+    // 6. PROCESAR ENVÍO A CADA CORREO ADICIONAL
+    var correosEnviados = [];
+    var correosFallidos = [];
+    
+    for (var i = 0; i < correosAdicionales.length; i++) {
+      var correo = correosAdicionales[i].trim();
+      Logger.log('Enviando correo a: ' + correo);
+      
+      try {
+        // Validación básica de formato de correo
+        if (!correo || correo.indexOf('@') === -1) {
+          Logger.log('Correo inválido: ' + correo);
+          correosFallidos.push(correo + ' (formato inválido)');
+          continue;
+        }
+        
+        // ENVÍO REAL DEL CORREO CON ADJUNTOS
+        GmailApp.sendEmail(
+          correo,
+          'Copia - Solicitud Aprobada - ' + solicitud.nombre,
+          'Se le ha compartido una copia de una solicitud aprobada. Por favor ver el contenido HTML para más detalles.',
+          { 
+            htmlBody: mensajeAdicional,
+            attachments: adjuntos,
+            name: 'Sistema de Solicitudes - Copia de Aprobación'
+          }
+        );
+        
+        correosEnviados.push(correo);
+        Logger.log('✓ Correo enviado exitosamente a: ' + correo);
+        
+        // Pequeña pausa entre envíos para evitar límites de Gmail
+        if (i < correosAdicionales.length - 1) {
+          Utilities.sleep(1000); // 1 segundo de pausa
+        }
+        
+      } catch (error) {
+        Logger.log('✗ Error al enviar correo a ' + correo + ': ' + error.toString());
+        correosFallidos.push(correo + ' (error: ' + error.message + ')');
+      }
+    }
+    
+    // 7. PREPARAR RESULTADO DETALLADO DEL ENVÍO
+    var resultado = {
+      success: true,
+      message: 'Correos enviados exitosamente',
+      detalles: {
+        total: correosAdicionales.length,
+        enviados: correosEnviados,
+        fallidos: correosFallidos
+      }
+    };
+    
+    // Ajustar mensaje según los resultados obtenidos
+    if (correosEnviados.length === 0 && correosFallidos.length > 0) {
+      resultado.success = false;
+      resultado.message = 'No se pudo enviar a ningún correo';
+    } else if (correosFallidos.length > 0) {
+      resultado.message = 'Algunos correos no se pudieron enviar';
+    }
+    
+    Logger.log('=== RESUMEN FINAL ===');
+    Logger.log('Resultado: ' + JSON.stringify(resultado));
+    
+    return resultado;
+    
+  } catch (error) {
+    Logger.log('=== ERROR CRÍTICO ===');
+    Logger.log('Error en enviarCorreosAdicionales: ' + error.toString());
+    
+    return {
+      success: false,
+      message: 'Error al procesar los correos: ' + error.message
+    };
+  }
+}
+
+/**
+ * Función de prueba para verificar conectividad con el servidor
+ * @returns {Object} Resultado de la prueba de conexión
+ */
+function probarConexionSimple() {
+  Logger.log('=== PRUEBA CONEXIÓN SIMPLE ===');
+  return {
+    success: true,
+    message: 'Conexión funcionando - ' + new Date().toLocaleTimeString(),
+    data: 'Test exitoso'
+  };
+}
+
+/**
+ * Muestra formulario para ingresar motivo de denegación
+ * VERSIÓN MODIFICADA: Sin verificación de permisos
+ * @param {string} solicitudId - ID de la solicitud a denegar
+ * @returns {HtmlService.HtmlOutput} Formulario HTML para denegación
+ */
+function mostrarFormularioDenegacion(solicitudId) {
+  var baseUrl = ScriptApp.getService().getUrl();
+  
+  var html = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <base target="_top">
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #599d5e 0%, #478252 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+      .container { background: white; border-radius: 15px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); overflow: hidden; width: 100%; max-width: 500px; }
+      .header { background: linear-gradient(135deg, #2f6c46 0%, #478252 50%, #599d5e 100%); color: white; padding: 30px; text-align: center; }
+      .header h2 { margin: 0; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 1.5em; }
+      .content { padding: 30px; }
+      .form-group { margin-bottom: 20px; }
+      label { display: block; margin-bottom: 8px; font-weight: bold; color: #2f6c46; font-size: 14px; }
+      textarea { width: 100%; min-height: 120px; padding: 12px; border: 2px solid #e1e5e9; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical; transition: border-color 0.3s ease; }
+      textarea:focus { outline: none; border-color: #599d5e; box-shadow: 0 0 0 3px rgba(89, 157, 94, 0.1); }
+      .buttons { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+      .btn { padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; font-size: 14px; }
+      .btn-denegar { background: linear-gradient(135deg, #478252 0%, #599d5e 100%); color: white; }
+      .btn-denegar:hover { background: linear-gradient(135deg, #2f6c46 0%, #478252 100%); transform: translateY(-1px); box-shadow: 0 5px 15px rgba(47, 108, 70, 0.3); }
+      .btn-cancelar { background-color: #6c8789; color: white; }
+      .btn-cancelar:hover { background-color: #5a7173; transform: translateY(-1px); }
+      .error { color: #dc3545; font-size: 12px; margin-top: 5px; display: none; }
+      .loading { display: none; text-align: center; padding: 20px; }
+      .loading-spinner { border: 3px solid #f3f3f3; border-top: 3px solid #599d5e; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h2><i class="fas fa-times-circle"></i> Denegar Solicitud</h2>
+      </div>
+      <div class="content">
+        <p style="margin-bottom: 20px; color: #555;">Por favor ingrese el motivo de la denegación:</p>
+        
+        <form id="denegarForm">
+          <div class="form-group">
+            <label for="motivo">Motivo de denegación:</label>
+            <textarea id="motivo" name="motivo" placeholder="Explique detalladamente por qué se denega la solicitud..." required></textarea>
+            <div id="motivoError" class="error">Por favor ingrese el motivo de denegación</div>
+          </div>
+        </form>
+        
+        <div class="loading" id="loading">
+          <div class="loading-spinner"></div>
+          <p>Procesando denegación...</p>
+        </div>
+        
+        <div class="buttons">
+          <button type="button" class="btn btn-cancelar" id="btnCancelar">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button type="button" class="btn btn-denegar" id="btnDenegar">
+            <i class="fas fa-ban"></i> Confirmar Denegación
+          </button>
+        </div>
+      </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const motivoInput = document.getElementById('motivo');
+        const motivoError = document.getElementById('motivoError');
+        const btnCancelar = document.getElementById('btnCancelar');
+        const btnDenegar = document.getElementById('btnDenegar');
+        const loading = document.getElementById('loading');
+        const buttons = document.querySelector('.buttons');
+        
+        function validarFormulario() {
+          const motivo = motivoInput.value.trim();
+          if (!motivo) {
+            motivoError.style.display = 'block';
+            motivoInput.focus();
+            return false;
+          }
+          motivoError.style.display = 'none';
+          return true;
+        }
+        
+        function mostrarLoading() {
+          loading.style.display = 'block';
+          buttons.style.display = 'none';
+        }
+        
+        function ocultarLoading() {
+          loading.style.display = 'none';
+          buttons.style.display = 'flex';
+        }
+        
+        btnCancelar.addEventListener('click', function() {
+          window.history.back();
+        });
+        
+        btnDenegar.addEventListener('click', function() {
+          if (validarFormulario()) {
+            mostrarLoading();
+            const motivo = motivoInput.value.trim();
+            
+            google.script.run
+              .withSuccessHandler(function(result) {
+                if (result && result.success) {
+                  window.location.href = '${baseUrl}?action=denegacionCompletada&id=${solicitudId}';
+                } else {
+                  ocultarLoading();
+                  alert('Error: ' + (result ? result.message : 'Error desconocido'));
+                }
+              })
+              .withFailureHandler(function(error) {
+                ocultarLoading();
+                alert('Error al denegar la solicitud: ' + error.message);
+              })
+              .denegarSolicitud('${solicitudId}', motivo);
+          }
+        });
+        
+        denegarForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          btnDenegar.click();
+        });
+        
+        motivoInput.addEventListener('input', function() {
+          if (this.value.trim()) {
+            motivoError.style.display = 'none';
+          }
+        });
+        
+        motivoInput.focus();
+      });
+    </script>
+  </body>
+  </html>
+  `;
+  
+  return HtmlService.createHtmlOutput(html);
+}
+
+/**
+ * Procesa la denegación de una solicitud con motivo específico
+ * VERSIÓN MODIFICADA: Sin verificación de permisos
+ * @param {string} solicitudId - ID de la solicitud a denegar
+ * @param {string} motivo - Motivo detallado de la denegación
+ * @returns {Object} Resultado del proceso de denegación
+ */
+function denegarSolicitud(solicitudId, motivo) {
+  try {
+    Logger.log('Denegando solicitud: ' + solicitudId + ' con motivo: ' + motivo);
+    
+    // 1. ACTUALIZAR ESTADO EN BASE DE DATOS - Cambiar a "Denegado" con motivo
+    BaseDatos.actualizarEstadoSolicitud(solicitudId, 'Denegado', motivo);
+    
+    // 2. OBTENER INFORMACIÓN DE LA SOLICITUD PARA NOTIFICACIÓN
+    var solicitud = BaseDatos.obtenerSolicitudPorId(solicitudId);
+    
+    if (solicitud) {
+      // 3. GENERAR PDF FORMAL DE LA SOLICITUD DENEGADA
+      var pdfBlob = GeneradorPDF.generarPDFDenegada(solicitud, motivo);
+      
+      // 4. NOTIFICAR AL USUARIO SOLICITANTE SOBRE LA DENEGACIÓN
+      if (solicitud.correo && Validacion.validarCorreo(solicitud.correo)) {
+        var mensajeDenegacion = `
+        <h2>❌ Su Solicitud ha sido Denegada</h2>
+        <p>Estimado/a ${solicitud.nombre},</p>
+        <p>Lamentamos informarle que su solicitud de <strong>${solicitud.tipoSolicitud}</strong> ha sido <strong>DENEGADA</strong>.</p>
+        
+        <div style="background: #f8d7da; padding: 15px; border-radius: 5px; margin: 15px 0;">
+          <h3>Detalles de la Denegación</h3>
+          <p><strong>Tipo de solicitud:</strong> ${solicitud.detalle}</p>
+          <p><strong>Motivo de denegación:</strong> ${motivo}</p>
+          <p><strong>Jefe que denegó:</strong> ${solicitud.jefe}</p>
+          <p><strong>Fecha de denegación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+        </div>
+        
+        <p>Si tiene preguntas sobre esta decisión, por favor contacte a su jefe inmediato.</p>
+        <p><strong>Archivo PDF:</strong> Encuentre los detalles completos en el documento adjunto.</p>
+        </p>
+        `;
+        
+        GmailApp.sendEmail(solicitud.correo,
+                          'Solicitud Denegada - ' + solicitud.tipoSolicitud,
+                          'Su solicitud ha sido denegada. Ver el PDF adjunto para más detalles.',
+                          { 
+                            htmlBody: mensajeDenegacion,
+                            attachments: [pdfBlob],
+                            name: 'Sistema de Solicitudes - Denegación'
+                          });
+      }
+      
+      Logger.log('Solicitud denegada exitosamente');
+      return {
+        success: true,
+        message: 'Solicitud denegada exitosamente'
+      };
+    } else {
+      Logger.log('No se encontró la solicitud con ID: ' + solicitudId);
+      return {
+        success: false,
+        message: 'No se encontró la solicitud'
+      };
+    }
+    
+  } catch (error) {
+    Logger.log('Error al denegar solicitud: ' + error.toString());
+    return { 
+      success: false, 
+      message: 'Error al procesar la denegación: ' + error.toString() 
+    };
+  }
+}
+
+/**
+ * Muestra página de confirmación después de denegar una solicitud
+ * @param {string} solicitudId - ID de la solicitud denegada
+ * @returns {HtmlService.HtmlOutput} Página de confirmación
+ */
+function mostrarDenegacionCompletada(solicitudId) {
+  return HtmlService.createHtmlOutput(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <base target="_top">
+      <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f8f9fa; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); max-width: 500px; margin: 0 auto; }
+        .success { color: #dc3545; font-size: 24px; margin-bottom: 20px; }
+        .btn { background: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block; margin-top: 20px; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="success">❌ Solicitud Denegada</div>
+        <p>La solicitud ha sido denegada exitosamente.</p>
+        <p>Se ha enviado la notificación con el PDF adjunto al solicitante.</p>
+        <a href="${ScriptApp.getService().getUrl()}" class="btn">Volver al sistema</a>
+      </div>
+    </body>
+    </html>
+  `);
+}

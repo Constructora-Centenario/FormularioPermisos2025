@@ -1,0 +1,567 @@
+<!--
+  HOJA DE ESTILOS CSS DEL SISTEMA
+  Define todos los estilos visuales para la interfaz
+  Diseño responsive y moderno con colores corporativos
+-->
+
+<style>
+  /* RESET Y CONFIGURACIÓN BASE */
+  * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box; /* Modelo de caja más predecible */
+  }
+
+  /* ESTILOS GENERALES DEL CUERPO */
+  body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Fuente moderna */
+      background: linear-gradient(135deg, #599d5e 0%, #478252 100%); /* Gradiente corporativo */
+      min-height: 100vh; /* Altura mínima de toda la ventana */
+      padding: 20px; /* Espaciado exterior */
+      line-height: 1.6; /* Altura de línea para mejor legibilidad */
+  }
+
+  /* CONTENEDOR PRINCIPAL */
+  .container {
+      max-width: 800px; /* Ancho máximo para escritorio */
+      margin: 0 auto; /* Centrado horizontal */
+      background: white; /* Fondo blanco para el contenido */
+      border-radius: 15px; /* Esquinas redondeadas */
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1); /* Sombra suave */
+      overflow: hidden; /* Contener elementos hijos */
+      position: relative; /* Contexto de posicionamiento */
+  }
+
+  /* ESTILOS DEL LOGO */
+  .logo {
+      display: flex;
+      justify-content: center; /* Centrado horizontal */
+      align-items: center; /* Centrado vertical */
+      padding: 25px; /* Espaciado interno */
+  }
+
+  .logo-link {
+      display: inline-block;
+      text-decoration: none; /* Sin subrayado */
+      transition: transform 0.3s ease; /* Transición suave */
+  }
+
+  .logo-link:hover {
+      transform: scale(1.05); /* Efecto de escala al hover */
+  }
+
+  .logo-image {
+      max-width: 120px; /* Ancho máximo controlado */
+      height: auto; /* Altura automática para mantener proporción */
+      display: block; /* Eliminar espacio inferior */
+  }
+
+  /* ENCABEZADO PRINCIPAL */
+  .header {
+      padding: 10px; /* Espaciado reducido */
+      text-align: center; /* Texto centrado */
+      background: white; /* Fondo blanco */
+      border-bottom: 1px solid #e1e5e9; /* Línea separadora sutil */
+  }
+
+  .header h1 {
+      color: #2f6c46; /* Verde corporativo */
+      margin-bottom: 10px; /* Espacio inferior */
+      font-size: 2.2em; /* Tamaño de fuente grande */
+      font-weight: 700; /* Negrita */
+  }
+
+  .header p {
+      color: #6c8789; /* Gris verdoso */
+      font-size: 1.1em; /* Tamaño de fuente legible */
+      font-weight: 400; /* Peso normal */
+  }
+
+  /* CAJA DE INFORMACIÓN */
+  .info-box {
+      background: #f0f7f0; /* Fondo verde muy claro */
+      border-left: 4px solid #96c77a; /* Borde izquierdo acentuado */
+      padding: 20px; /* Espaciado interno */
+      margin: 20px 30px; /* Margen exterior */
+      border-radius: 8px; /* Esquinas redondeadas */
+  }
+
+  .info-box h3 {
+      color: #478252; /* Verde corporativo */
+      margin-bottom: 10px; /* Espacio inferior */
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre ícono y texto */
+      font-size: 1.2em; /* Tamaño de fuente */
+  }
+
+  .info-box p {
+      color: #555; /* Gris oscuro */
+      line-height: 1.5; /* Altura de línea cómoda */
+      margin: 0; /* Sin margen */
+  }
+
+  /* MENSAJE DE ÉXITO */
+  .success-message {
+      background: #f0f7f0; /* Fondo verde claro */
+      border: 1px solid #96c77a; /* Borde verde */
+      color: #2f6c46; /* Texto verde oscuro */
+      padding: 20px; /* Espaciado interno */
+      margin: 20px 30px; /* Margen exterior */
+      border-radius: 8px; /* Esquinas redondeadas */
+      display: none; /* Oculto inicialmente */
+  }
+
+  .success-message h3 {
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre elementos */
+      margin-bottom: 10px; /* Espacio inferior */
+      font-size: 1.2em; /* Tamaño de fuente */
+  }
+
+  /* MENSAJE DE ERROR */
+  .error-message {
+      background: #f8d7da; /* Fondo rojo claro */
+      border: 1px solid #f5c6cb; /* Borde rojo */
+      color: #721c24; /* Texto rojo oscuro */
+      padding: 20px; /* Espaciado interno */
+      margin: 20px 30px; /* Margen exterior */
+      border-radius: 8px; /* Esquinas redondeadas */
+      display: none; /* Oculto inicialmente */
+  }
+
+  .error-message h3 {
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre elementos */
+      margin-bottom: 10px; /* Espacio inferior */
+      font-size: 1.2em; /* Tamaño de fuente */
+  }
+
+  /* INDICADOR DE CARGA */
+  .loading {
+      text-align: center; /* Texto centrado */
+      padding: 40px; /* Espaciado interno generoso */
+      display: none; /* Oculto inicialmente */
+  }
+
+  /* ANIMACIÓN DEL SPINNER DE CARGA */
+  .loading-spinner {
+      border: 4px solid #f3f3f3; /* Borde exterior claro */
+      border-top: 4px solid #599d5e; /* Borde superior verde */
+      border-radius: 50%; /* Forma circular */
+      width: 50px; /* Ancho fijo */
+      height: 50px; /* Alto fijo */
+      animation: spin 1s linear infinite; /* Animación infinita */
+      margin: 0 auto 20px; /* Centrado y espacio inferior */
+  }
+
+  /* DEFINICIÓN DE LA ANIMACIÓN SPIN */
+  @keyframes spin {
+      0% { transform: rotate(0deg); } /* Inicio: 0 grados */
+      100% { transform: rotate(360deg); } /* Fin: 360 grados */
+  }
+
+  /* ESTILOS DE FORMULARIOS */
+  form {
+      padding: 0 30px 30px; /* Espaciado interno: arriba 0, lados 30px, abajo 30px */
+  }
+
+  .form-group {
+      margin-bottom: 25px; /* Espacio entre grupos de formulario */
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder el ancho del contenedor */
+  }
+
+  /* ETIQUETAS DE FORMULARIO */
+  label {
+      display: block; /* Ocupa toda la línea */
+      margin-bottom: 8px; /* Espacio inferior */
+      font-weight: 600; /* Negrita semibold */
+      color: #2f6c46; /* Verde corporativo */
+      position: relative; /* Para posicionar elementos hijos */
+      font-size: 14px; /* Tamaño de fuente consistente */
+  }
+
+  /* INDICADOR DE CAMPO OBLIGATORIO */
+  .required {
+      color: #e74c3c; /* Rojo para indicar obligatoriedad */
+  }
+
+  /* CAMPOS DE FORMULARIO (INPUT, SELECT, TEXTAREA) */
+  input, select, textarea {
+      width: 100%; /* Ancho completo */
+      padding: 12px 15px; /* Espaciado interno cómodo */
+      border: 2px solid #e1e5e9; /* Borde sutil */
+      border-radius: 8px; /* Esquinas redondeadas */
+      font-size: 16px; /* Tamaño de fuente legible */
+      transition: all 0.3s ease; /* Transición suave para todos los cambios */
+      background: white; /* Fondo blanco */
+      font-family: inherit; /* Heredar fuente del padre */
+      max-width: 100%; /* No exceder el ancho */
+      box-sizing: border-box; /* Incluir padding en el ancho */
+  }
+
+  /* ESTADO DE FOCO EN CAMPOS */
+  input:focus, select:focus, textarea:focus {
+      outline: none; /* Sin contorno por defecto */
+      border-color: #599d5e; /* Borde verde al focus */
+      box-shadow: 0 0 0 3px rgba(89, 157, 94, 0.1); /* Sombra suave verde */
+  }
+
+  /* MENSAJES DE ERROR */
+  .error {
+      color: #e74c3c; /* Rojo para errores */
+      font-size: 14px; /* Tamaño legible */
+      margin-top: 5px; /* Espacio superior */
+      display: none; /* Oculto inicialmente */
+  }
+
+  /* BOTONES PRINCIPALES */
+  .btn {
+      background: linear-gradient(135deg, #478252 0%, #599d5e 100%); /* Gradiente verde */
+      color: white; /* Texto blanco */
+      padding: 15px 30px; /* Espaciado interno generoso */
+      border: none; /* Sin borde */
+      border-radius: 8px; /* Esquinas redondeadas */
+      font-size: 16px; /* Tamaño de fuente */
+      font-weight: 600; /* Negrita */
+      cursor: pointer; /* Cursor de mano */
+      transition: all 0.3s ease; /* Transición suave */
+      width: 100%; /* Ancho completo */
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      justify-content: center; /* Centrado horizontal */
+      gap: 10px; /* Espacio entre ícono y texto */
+      max-width: 100%; /* No exceder ancho */
+      box-sizing: border-box; /* Modelo de caja consistente */
+  }
+
+  /* ESTADO HOVER DE BOTONES */
+  .btn:hover {
+      background: linear-gradient(135deg, #2f6c46 0%, #478252 100%); /* Gradiente más oscuro */
+      transform: translateY(-2px); /* Efecto de elevación */
+      box-shadow: 0 5px 15px rgba(47, 108, 70, 0.4); /* Sombra más pronunciada */
+  }
+
+  /* ESTADO ACTIVO DE BOTONES */
+  .btn:active {
+      transform: translateY(0); /* Volver a posición original */
+  }
+
+  /* CAJA DE INFORMACIÓN DEL USUARIO */
+  .user-info-box {
+      background: #f8f9fa; /* Fondo gris muy claro */
+      border: 1px solid #e1e5e9; /* Borde sutil */
+      border-radius: 8px; /* Esquinas redondeadas */
+      padding: 20px; /* Espaciado interno */
+      margin: 20px 30px; /* Margen exterior */
+      width: calc(100% - 60px); /* Ancho calculado restando márgenes */
+      max-width: 100%; /* No exceder ancho */
+      box-sizing: border-box; /* Modelo de caja */
+  }
+
+  .user-info-box h3 {
+      color: #2f6c46; /* Verde corporativo */
+      margin-bottom: 15px; /* Espacio inferior */
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre elementos */
+      font-size: 1.2em; /* Tamaño de fuente */
+  }
+
+  .user-details p {
+      margin-bottom: 8px; /* Espacio entre líneas */
+      color: #6c8789; /* Gris verdoso */
+  }
+
+  .user-details strong {
+      color: #2f6c46; /* Verde corporativo para etiquetas */
+  }
+
+  /* CONTENEDOR DE CAMPOS DE TIEMPO (HORAS) */
+  .time-fields {
+      display: grid; /* Layout de grid */
+      grid-template-columns: 1fr 1fr; /* Dos columnas iguales */
+      gap: 15px; /* Espacio entre columnas */
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+  }
+
+  /* INFORMACIÓN DE ARCHIVOS */
+  .file-info {
+      font-size: 12px; /* Texto pequeño */
+      color: #6c8789; /* Gris verdoso */
+      margin-top: 5px; /* Espacio superior */
+      margin-bottom: 10px; /* Espacio inferior */
+  }
+
+  /* VISTA PREVIA DE ARCHIVOS */
+  .file-preview {
+      background: #f8f9fa; /* Fondo gris claro */
+      border: 1px dashed #96c77a; /* Borde discontinuo verde */
+      border-radius: 6px; /* Esquinas ligeramente redondeadas */
+      padding: 15px; /* Espaciado interno */
+      margin-top: 10px; /* Espacio superior */
+      display: none; /* Oculto inicialmente */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre ícono y texto */
+      color: #6c8789; /* Gris verdoso */
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+      box-sizing: border-box; /* Modelo de caja */
+  }
+
+  .file-preview i {
+      color: #599d5e; /* Verde para el ícono */
+  }
+
+  /* BOTÓN DE AYUDA */
+  .help-btn {
+      background: none; /* Sin fondo */
+      border: none; /* Sin borde */
+      color: #599d5e; /* Verde corporativo */
+      cursor: pointer; /* Cursor de mano */
+      font-size: 16px; /* Tamaño consistente */
+      margin-left: 5px; /* Espacio a la izquierda */
+      padding: 2px; /* Espaciado mínimo */
+  }
+
+  .help-btn:hover {
+      color: #2f6c46; /* Verde más oscuro al hover */
+  }
+
+  /* ESTILOS DE MODAL (VENTANA EMERGENTE) */
+  .modal {
+      display: none; /* Oculto inicialmente */
+      position: fixed; /* Posicionamiento fijo */
+      z-index: 1000; /* Por encima de otros elementos */
+      left: 0;
+      top: 0;
+      width: 100%; /* Ancho completo de la ventana */
+      height: 100%; /* Alto completo de la ventana */
+      background-color: rgba(0,0,0,0.5); /* Fondo semitransparente */
+  }
+
+  /* CONTENIDO DEL MODAL */
+  .modal-content {
+      background-color: white; /* Fondo blanco */
+      margin: 5% auto; /* Centrado vertical y horizontal */
+      padding: 0; /* Sin padding (se aplica a elementos internos) */
+      border-radius: 10px; /* Esquinas redondeadas */
+      width: 90%; /* Ancho relativo */
+      max-width: 600px; /* Ancho máximo */
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3); /* Sombra pronunciada */
+      animation: modalSlideIn 0.3s ease; /* Animación de entrada */
+  }
+
+  /* ANIMACIÓN DE ENTRADA DEL MODAL */
+  @keyframes modalSlideIn {
+      from {
+          opacity: 0; /* Invisible al inicio */
+          transform: translateY(-50px); /* Posición arriba */
+      }
+      to {
+          opacity: 1; /* Visible al final */
+          transform: translateY(0); /* Posición normal */
+      }
+  }
+
+  /* ENCABEZADO DEL MODAL */
+  .modal-header {
+      background: linear-gradient(135deg, #2f6c46 0%, #478252 50%, #599d5e 100%); /* Gradiente verde */
+      color: white; /* Texto blanco */
+      padding: 20px; /* Espaciado interno */
+      border-radius: 10px 10px 0 0; /* Esquinas redondeadas solo arriba */
+      display: flex; /* Flexbox para alinear elementos */
+      justify-content: space-between; /* Espacio entre título y botón cerrar */
+      align-items: center; /* Centrado vertical */
+  }
+
+  .modal-header h3 {
+      margin: 0; /* Sin margen */
+      display: flex; /* Flexbox para alinear ícono y texto */
+      align-items: center; /* Centrado vertical */
+      gap: 10px; /* Espacio entre elementos */
+      font-size: 1.3em; /* Tamaño de fuente */
+  }
+
+  /* BOTÓN CERRAR DEL MODAL */
+  .close {
+      color: white; /* Color blanco */
+      font-size: 28px; /* Tamaño grande */
+      font-weight: bold; /* Negrita */
+      cursor: pointer; /* Cursor de mano */
+      line-height: 1; /* Altura de línea normal */
+  }
+
+  .close:hover {
+      color: #f8f9fa; /* Color ligeramente diferente al hover */
+  }
+
+  /* CUERPO DEL MODAL */
+  .modal-body {
+      padding: 20px; /* Espaciado interno */
+      max-height: 60vh; /* Altura máxima */
+      overflow-y: auto; /* Scroll vertical si es necesario */
+  }
+
+  .modal-body h4 {
+      color: #2f6c46; /* Verde corporativo */
+      margin-bottom: 15px; /* Espacio inferior */
+      font-size: 1.1em; /* Tamaño de fuente */
+  }
+
+  .modal-body ul {
+      margin-left: 20px; /* Sangría para listas */
+      margin-bottom: 15px; /* Espacio inferior */
+  }
+
+  .modal-body li {
+      margin-bottom: 8px; /* Espacio entre elementos de lista */
+      color: #6c8789; /* Gris verdoso */
+  }
+
+  /* CAJA DE DESTACADO EN MODAL */
+  .highlight-box {
+      background: #f0f7f0; /* Fondo verde muy claro */
+      border: 1px solid #96c77a; /* Borde verde */
+      border-radius: 6px; /* Esquinas redondeadas */
+      padding: 15px; /* Espaciado interno */
+      margin-top: 15px; /* Espacio superior */
+  }
+
+  .highlight-box p {
+      margin: 0; /* Sin margen */
+      color: #2f6c46; /* Verde corporativo */
+      font-size: 14px; /* Tamaño de fuente pequeño */
+  }
+
+  /* PIE DE PÁGINA */
+  .footer {
+      background: #f8f9fa; /* Fondo gris claro */
+      padding: 20px; /* Espaciado interno */
+      text-align: center; /* Texto centrado */
+      border-top: 1px solid #e1e5e9; /* Línea separadora */
+      color: #6c8789; /* Gris verdoso */
+      font-size: 14px; /* Tamaño de fuente pequeño */
+  }
+
+  /* DISEÑO RESPONSIVE - TABLETS (768px o menos) */
+  @media (max-width: 768px) {
+      body {
+          padding: 10px; /* Menos padding en móviles */
+      }
+      
+      .container {
+          border-radius: 10px; /* Esquinas menos redondeadas */
+      }
+      
+      .header {
+          padding: 20px; /* Más padding en header */
+      }
+      
+      .header h1 {
+          font-size: 1.8em; /* Título más pequeño */
+      }
+      
+      form {
+          padding: 0 20px 20px; /* Menos padding lateral */
+      }
+      
+      .info-box, .user-info-box, .success-message, .error-message {
+          margin: 15px 20px; /* Menos margen exterior */
+          width: calc(100% - 40px); /* Ancho ajustado */
+      }
+      
+      .time-fields {
+          grid-template-columns: 1fr; /* Una columna en móviles */
+          gap: 15px; /* Espacio entre filas */
+      }
+      
+      .modal-content {
+          width: 95%; /* Más ancho relativo */
+          margin: 10% auto; /* Menos margen superior */
+      }
+
+      /* AJUSTES ESPECÍFICOS PARA MÓVILES */
+      input, select, textarea {
+          font-size: 16px; /* Previene zoom en iOS */
+      }
+  }
+
+  /* DISEÑO RESPONSIVE - MÓVILES PEQUEÑOS (480px o menos) */
+  @media (max-width: 480px) {
+      .header h1 {
+          font-size: 1.5em; /* Título aún más pequeño */
+      }
+      
+      .header p {
+          font-size: 1em; /* Texto más pequeño */
+      }
+      
+      input, select, textarea {
+          font-size: 14px; /* Fuente más pequeña */
+          padding: 10px 12px; /* Menos padding */
+      }
+      
+      .btn {
+          padding: 12px 20px; /* Menos padding en botones */
+          font-size: 14px; /* Fuente más pequeña */
+      }
+
+      .user-info-box,
+      .info-box,
+      .success-message,
+      .error-message {
+          margin: 10px 15px; /* Menos margen */
+          width: calc(100% - 30px); /* Ancho ajustado */
+          padding: 15px; /* Menos padding */
+      }
+  }
+
+  /* AJUSTES ESPECÍFICOS PARA ALINEACIÓN PERFECTA */
+  #solicitudFormContainer {
+      width: 100%; /* Ancho completo */
+  }
+
+  #solicitudForm {
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+  }
+
+  /* ASEGURAR QUE TODOS LOS ELEMENTOS DEL FORMULARIO TENGAN EL MISMO ANCHO */
+  #tipoSolicitud,
+  #tipoPermiso,
+  #tipoIncapacidad,
+  #tipoLicencia,
+  #fechaPermiso,
+  #fechaInicioIncapacidad,
+  #fechaFinIncapacidad,
+  #horaInicioPermiso,
+  #horaFinPermiso,
+  #observaciones,
+  #soporte {
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+      box-sizing: border-box; /* Modelo de caja consistente */
+  }
+
+  /* CONTENEDOR DE OPCIONES ESPECÍFICAS */
+  #opciones-container {
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+  }
+
+  #opciones-container .form-group {
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+  }
+
+  /* AJUSTE FINO PARA CAMPOS DE TIEMPO EN EL GRID */
+  .time-fields .form-group input {
+      width: 100%; /* Ancho completo */
+      max-width: 100%; /* No exceder ancho */
+  }
+</style>

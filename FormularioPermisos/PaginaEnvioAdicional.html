@@ -1,0 +1,447 @@
+<!--
+  PÁGINA DE ENVÍO ADICIONAL DE CORREOS
+  Interfaz que permite enviar copias de solicitudes aprobadas a correos adicionales
+  Se muestra después de aprobar una solicitud
+-->
+
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* ESTILOS ESPECÍFICOS PARA LA PÁGINA DE ENVÍO ADICIONAL */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+      background: linear-gradient(135deg, #599d5e 0%, #478252 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+      overflow: hidden;
+      width: 100%;
+      max-width: 600px;
+    }
+    
+    .header {
+      background: linear-gradient(135deg, #2f6c46 0%, #478252 50%, #599d5e 100%);
+      color: white;
+      padding: 30px;
+      text-align: center;
+    }
+    
+    .header h2 {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-size: 1.5em;
+    }
+    
+    .content {
+      padding: 30px;
+    }
+    
+    .success-info {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .success-info h3 {
+      color: #155724;
+      margin-bottom: 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .success-info p {
+      margin-bottom: 8px;
+      color: #155724;
+    }
+    
+    .form-group { 
+      margin-bottom: 20px; 
+    }
+    
+    label { 
+      display: block; 
+      margin-bottom: 8px; 
+      font-weight: bold; 
+      color: #2f6c46;
+      font-size: 14px;
+    }
+    
+    input[type="email"] { 
+      width: 100%; 
+      padding: 12px 15px; 
+      border: 2px solid #e1e5e9; 
+      border-radius: 8px; 
+      font-size: 14px;
+      transition: border-color 0.3s ease;
+    }
+    
+    input[type="email"]:focus {
+      outline: none;
+      border-color: #599d5e;
+      box-shadow: 0 0 0 3px rgba(89, 157, 94, 0.1);
+    }
+    
+    .email-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+      min-height: 40px;
+      border: 1px solid #e1e5e9;
+      border-radius: 8px;
+      padding: 10px;
+      background: #f8f9fa;
+    }
+    
+    .email-tag {
+      background: #599d5e;
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .email-tag .remove {
+      cursor: pointer;
+      font-weight: bold;
+    }
+    
+    .email-tag .remove:hover {
+      color: #ffeb3b;
+    }
+    
+    .buttons { 
+      display: flex; 
+      gap: 10px; 
+      justify-content: space-between;
+      margin-top: 25px;
+    }
+    
+    .btn { 
+      padding: 12px 24px; 
+      border: none; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      text-decoration: none;
+    }
+    
+    .btn-enviar { 
+      background: linear-gradient(135deg, #478252 0%, #599d5e 100%);
+      color: white; 
+    }
+    
+    .btn-enviar:hover {
+      background: linear-gradient(135deg, #2f6c46 0%, #478252 100%);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(47, 108, 70, 0.3);
+    }
+    
+    .btn-finalizar { 
+      background: #6c8789; 
+      color: white; 
+    }
+    
+    .btn-finalizar:hover {
+      background: #5a7173;
+      transform: translateY(-1px);
+    }
+    
+    .error {
+      color: #dc3545;
+      font-size: 12px;
+      margin-top: 5px;
+      display: none;
+    }
+    
+    .success {
+      color: #28a745;
+      font-size: 14px;
+      margin-top: 10px;
+      display: none;
+    }
+    
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+    
+    .loading-spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #599d5e;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 10px;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="container">
+    <!-- ENCABEZADO -->
+    <div class="header">
+      <h2><i class="fas fa-check-circle"></i> Solicitud Aprobada</h2>
+    </div>
+    
+    <!-- CONTENIDO PRINCIPAL -->
+    <div class="content">
+      <!-- INFORMACIÓN DE ÉXITO -->
+      <div class="success-info">
+        <h3><i class="fas fa-info-circle"></i> Solicitud Procesada Exitosamente</h3>
+        <p><strong>Enviado a Gestión:</strong> gestionhumana@constructoracentenario.com & ana.pelaez@constructoracentenario.com</p>
+        <p><strong>ID de Solicitud:</strong> <?= solicitudId ?></p>
+      </div>
+      
+      <!-- FORMULARIO PARA CORREOS ADICIONALES -->
+      <div class="form-group">
+        <label for="correosAdicionales">Enviar copia a correos adicionales (opcional):</label>
+        <input type="email" id="correoInput" placeholder="Ingrese un correo electrónico y presione Enter">
+        <div id="correosError" class="error">Por favor ingrese un correo válido</div>
+        <div id="correosSuccess" class="success"></div>
+        <div class="email-tags" id="emailTags"></div>
+        <small style="color: #6c757d; font-size: 12px; display: block; margin-top: 5px;">
+          Puede ingresar múltiples correos electrónicos. Presione Enter después de cada uno.
+        </small>
+      </div>
+      
+      <!-- INDICADOR DE CARGA -->
+      <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <p>Enviando correos adicionales...</p>
+      </div>
+      
+      <!-- BOTONES DE ACCIÓN -->
+      <div class="buttons">
+        <!-- BOTÓN FINALIZAR -->
+        <a href="<?= ScriptApp.getService().getUrl() ?>" class="btn btn-finalizar">
+          <i class="fas fa-home"></i> Finalizar
+        </a>
+        
+        <!-- BOTÓN ENVIAR CORREOS ADICIONALES -->
+        <button type="button" class="btn btn-enviar" id="btnEnviarAdicional">
+          <i class="fas fa-paper-plane"></i> Enviar a Correos Adicionales
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- SCRIPT DE FONT AWESOME PARA ÍCONOS -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+  
+  <!-- SCRIPT DE FUNCIONALIDAD JAVASCRIPT -->
+  <script>
+    // OBTENER ID DE SOLICITUD DESDE EL SERVIDOR
+    const solicitudId = '<?= solicitudId ?>';
+    
+    /**
+     * INICIALIZACIÓN DE LA PÁGINA
+     * Configura todos los event listeners y funcionalidades
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+      // REFERENCIAS A ELEMENTOS DEL DOM
+      const correoInput = document.getElementById('correoInput');
+      const emailTags = document.getElementById('emailTags');
+      const btnEnviarAdicional = document.getElementById('btnEnviarAdicional');
+      const correosError = document.getElementById('correosError');
+      const correosSuccess = document.getElementById('correosSuccess');
+      const loading = document.getElementById('loading');
+      const buttons = document.querySelector('.buttons');
+      
+      // ARRAY PARA ALMACENAR CORREOS ADICIONALES
+      let correosAdicionales = [];
+      
+      /**
+       * Agrega un email a la lista de correos adicionales
+       */
+      function agregarEmail() {
+        const email = correoInput.value.trim();
+        if (!email) return;
+        
+        // VALIDACIÓN BÁSICA DE EMAIL
+        if (email.indexOf('@') === -1) {
+          correosError.textContent = 'Por favor ingrese un correo válido';
+          correosError.style.display = 'block';
+          return;
+        }
+        
+        // EVITAR DUPLICADOS
+        if (correosAdicionales.includes(email)) {
+          correosError.textContent = 'Este correo ya fue agregado';
+          correosError.style.display = 'block';
+          return;
+        }
+        
+        // AGREGAR A LA LISTA Y ACTUALIZAR INTERFAZ
+        correosAdicionales.push(email);
+        actualizarTags();
+        correoInput.value = '';
+        correosError.style.display = 'none';
+      }
+      
+      /**
+       * Actualiza la visualización de los tags de email
+       */
+      function actualizarTags() {
+        emailTags.innerHTML = '';
+        correosAdicionales.forEach((email, index) => {
+          const tag = document.createElement('div');
+          tag.className = 'email-tag';
+          tag.innerHTML = `${email}<span class="remove" onclick="removerEmail(${index})">&times;</span>`;
+          emailTags.appendChild(tag);
+        });
+      }
+      
+      /**
+       * Remueve un email de la lista
+       * @param {number} index - Índice del email a remover
+       */
+      window.removerEmail = function(index) {
+        correosAdicionales.splice(index, 1);
+        actualizarTags();
+      };
+      
+      // EVENT LISTENER PARA ENTER EN EL INPUT DE EMAIL
+      correoInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          agregarEmail();
+        }
+      });
+
+      /**
+       * Prueba la conexión con el servidor
+       * @returns {Promise} Promesa con el resultado de la prueba
+       */
+      function probarConexion() {
+        console.log('Probando conexión...');
+        return new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(reject)
+            .probarConexionSimple();
+        });
+      }
+
+      // EVENT LISTENER PARA EL BOTÓN DE ENVIAR
+      btnEnviarAdicional.addEventListener('click', async function() {
+        // VALIDAR QUE HAYA CORREOS PARA ENVIAR
+        if (correosAdicionales.length === 0) {
+          correosError.textContent = 'Agregue al menos un correo';
+          correosError.style.display = 'block';
+          return;
+        }
+        
+        // MOSTRAR INDICADOR DE CARGA
+        mostrarLoading();
+        
+        try {
+          // PASO 1: PROBAR CONEXIÓN CON EL SERVIDOR
+          console.log('Paso 1: Probando conexión...');
+          const testResult = await probarConexion();
+          console.log('Conexión OK:', testResult);
+          
+          // PASO 2: ENVIAR CORREOS ADICIONALES
+          console.log('Paso 2: Enviando correos...', correosAdicionales);
+          
+          // CONFIGURAR TIMEOUT PARA EVITAR BLOQUEOS
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Timeout después de 15 segundos')), 15000)
+          );
+          
+          // ENVIAR CORREOS AL SERVIDOR
+          const enviarPromise = new Promise((resolve, reject) => {
+            google.script.run
+              .withSuccessHandler(resolve)
+              .withFailureHandler(reject)
+              .enviarCorreosAdicionales(solicitudId, correosAdicionales);
+          });
+          
+          // ESPERAR RESPUESTA O TIMEOUT
+          const result = await Promise.race([enviarPromise, timeoutPromise]);
+          console.log('Envío exitoso:', result);
+          
+          // PROCESAR RESULTADO EXITOSO
+          ocultarLoading();
+          correosSuccess.textContent = result.message;
+          correosSuccess.style.display = 'block';
+          correosAdicionales = [];
+          actualizarTags();
+          
+        } catch (error) {
+          // MANEJO DE ERRORES
+          console.error('Error completo:', error);
+          ocultarLoading();
+          correosError.textContent = 'Error: ' + error.message;
+          correosError.style.display = 'block';
+        }
+      });
+      
+      /**
+       * Muestra el indicador de carga
+       */
+      function mostrarLoading() {
+        loading.style.display = 'block';
+        buttons.style.display = 'none';
+      }
+      
+      /**
+       * Oculta el indicador de carga
+       */
+      function ocultarLoading() {
+        loading.style.display = 'none';
+        buttons.style.display = 'flex';
+      }
+      
+      // ENFOCAR EL INPUT DE CORREO AL CARGAR LA PÁGINA
+      correoInput.focus();
+
+      // PRUEBA AUTOMÁTICA DE CONEXIÓN AL CARGAR LA PÁGINA
+      console.log('Test automático de conexión...');
+      probarConexion().then(result => {
+        console.log('✅ Conexión automática exitosa:', result);
+      }).catch(error => {
+        console.error('❌ Conexión automática falló:', error);
+      });
+    });
+  </script>
+</body>
+</html>

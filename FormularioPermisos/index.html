@@ -1,0 +1,761 @@
+<!--
+  INTERFAZ PRINCIPAL DEL SISTEMA DE SOLICITUDES
+  Página HTML principal que muestra el formulario de solicitudes
+  Incluye: validación por cédula, formulario dinámico y sistema de ayuda
+-->
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <!-- CONFIGURACIÓN BÁSICA DEL DOCUMENTO -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Solicitudes - Permisos, Incapacidades y Licencias</title>
+    <base target="_top">
+    
+    <!-- DEPENDENCIAS EXTERNAS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- ESTILOS INCORPORADOS -->
+    <style>
+        <?!= include('styles'); ?>
+    </style>
+</head>
+<body>
+    <!-- CONTENEDOR PRINCIPAL -->
+    <div class="container">
+        <!-- LOGO DE LA EMPRESA -->
+        <div class="logo">
+            <a href="https://constructoracentenario.com" class="logo-link" target="_blank">
+                <img src="https://constructoracentenario.com/wp-content/uploads/2024/04/LogoConstructoraCen2024.png" 
+                     alt="Constructora Centenario" 
+                     class="logo-image">
+            </a>
+        </div>
+
+        <!-- ENCABEZADO PRINCIPAL -->
+        <div class="header">
+            <h1>Sistema de Solicitudes</h1>
+            <p>Complete el formulario según su necesidad</p>
+        </div>
+        
+        <!-- CAJA DE INFORMACIÓN INICIAL -->
+        <div class="info-box">
+            <h3><i class="fas fa-info-circle"></i> Información importante</h3>
+            <p>Para iniciar, ingrese su número de cédula. El sistema buscará sus datos en nuestra base de datos.</p>
+        </div>
+        
+        <!-- MENSAJE DE ÉXITO (OCULTO INICIALMENTE) -->
+        <div id="successMessage" class="success-message">
+            <h3><i class="fas fa-check-circle"></i> ¡Solicitud enviada con éxito!</h3>
+            <p>Se ha enviado su solicitud a revisión al área encargada.</p>
+        </div>
+        
+        <!-- MENSAJE DE ERROR (OCULTO INICIALMENTE) -->
+        <div id="errorMessage" class="error-message">
+            <h3><i class="fas fa-exclamation-circle"></i> Error</h3>
+            <p id="errorText"></p>
+        </div>
+        
+        <!-- INDICADOR DE CARGA (OCULTO INICIALMENTE) -->
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p id="loadingText">Buscando información, por favor espere...</p>
+        </div>
+        
+        <!-- FORMULARIO DE VALIDACIÓN POR CÉDULA (VISIBLE INICIALMENTE) -->
+        <div id="cedulaFormContainer">
+            <form id="cedulaForm">
+                <div class="form-group">
+                    <label for="cedula">Número de cédula <span class="required">*</span></label>
+                    <input type="text" id="cedula" name="cedula" placeholder="Ingrese su número de cédula" required>
+                    <div id="cedulaError" class="error">Por favor ingrese su número de cédula</div>
+                </div>
+                
+                <button type="submit" class="btn"><i class="fas fa-search"></i> Buscar</button>
+            </form>
+        </div>
+        
+        <!-- FORMULARIO DE SOLICITUD (OCULTO INICIALMENTE) -->
+        <div id="solicitudFormContainer" style="display: none;">
+            <!-- INFORMACIÓN DEL USUARIO ENCONTRADO -->
+            <div class="user-info-box">
+                <h3><i class="fas fa-user"></i> Información del usuario</h3>
+                <div class="user-details">
+                    <p><strong>Nombre:</strong> <span id="userNombre"></span></p>
+                    <p><strong>Cédula:</strong> <span id="userCedula"></span></p>
+                    <p><strong>Correo:</strong> <span id="userCorreo"></span></p>
+                    <p><strong>Cargo:</strong> <span id="userCargo"></span></p>
+                    <p><strong>Jefe inmediato:</strong> <span id="userJefe"></span></p>
+                </div>
+            </div>
+            
+            <!-- FORMULARIO PRINCIPAL DE SOLICITUD -->
+            <form id="solicitudForm">
+                <!-- CAMPOS OCULTOS CON INFORMACIÓN DEL USUARIO -->
+                <input type="hidden" id="cedulaUsuario" name="cedulaUsuario">
+                <input type="hidden" id="nombreUsuario" name="nombreUsuario">
+                <input type="hidden" id="correoUsuario" name="correoUsuario">
+                <input type="hidden" id="cargoUsuario" name="cargoUsuario">
+                <input type="hidden" id="jefeUsuario" name="jefeUsuario">
+                <input type="hidden" id="correoJefe" name="correoJefe">
+                
+                <!-- TIPO DE SOLICITUD -->
+                <div class="form-group">
+                    <label for="tipoSolicitud">Tipo de solicitud <span class="required">*</span></label>
+                    <select id="tipoSolicitud" name="tipoSolicitud" required>
+                        <option value="">Seleccione una opción</option>
+                        <option value="permisos">Permisos</option>
+                        <option value="incapacidades">Incapacidades</option>
+                        <option value="licencias">Licencias</option>
+                    </select>
+                    <div id="tipoSolicitudError" class="error">Por favor seleccione un tipo de solicitud</div>
+                </div>
+                
+                <!-- CONTENEDOR DINÁMICO PARA OPCIONES ESPECÍFICAS -->
+                <div id="opciones-container"></div>
+                
+                <!-- MOTIVO DE LA SOLICITUD -->
+                <div class="form-group">
+                    <label for="observaciones">Motivo de solicitud <span class="required">*</span></label>
+                    <textarea id="observaciones" name="observaciones" placeholder="Describa el motivo de su solicitud, cómo va a recuperar el tiempo en caso de ser necesario, y cualquier información relevante..." required></textarea>
+                    <div id="observacionesError" class="error">Por favor ingrese el motivo de la solicitud</div>
+                </div>
+                
+                <!-- ADJUNTAR DOCUMENTO DE SOPORTE -->
+                <div class="form-group">
+                    <label for="soporte">Adjuntar soporte <span class="required">*</span>
+                        <!-- BOTÓN DE AYUDA PARA DOCUMENTOS REQUERIDOS -->
+                        <button type="button" class="help-btn" id="helpBtn" title="Ver documentos requeridos">
+                            <i class="fas fa-question-circle"></i>
+                        </button>
+                    </label>
+                    <input type="file" id="soporte" name="soporte" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" required>
+                    <div class="file-info">Formatos aceptados: PDF, JPG, PNG, DOC, DOCX (Tamaño máximo: 5MB)</div>
+                    <!-- VISTA PREVIA DEL ARCHIVO -->
+                    <div id="filePreview" class="file-preview">
+                        <i class="fas fa-file"></i> <span id="fileName">Ningún archivo seleccionado</span>
+                    </div>
+                    <div id="soporteError" class="error">Por favor adjunte el documento de soporte requerido</div>
+                </div>
+                
+                <!-- BOTÓN DE ENVÍO -->
+                <button type="submit" class="btn"><i class="fas fa-paper-plane"></i> Enviar Solicitud</button>
+            </form>
+        </div>
+        
+        <!-- PIE DE PÁGINA -->
+        <div class="footer">
+            <p>Sistema de Gestión de Solicitudes © 2025 - Desarrollado con Google Apps Script</p>
+        </div>
+    </div>
+
+    <!-- MODAL DE AYUDA PARA DOCUMENTOS REQUERIDOS -->
+    <div id="helpModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-alt"></i> Documentos Requeridos</h3>
+                <span class="close">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="helpContent">
+                    <p>Seleccione un tipo de solicitud para ver los documentos requeridos.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DE FUNCIONALIDAD JAVASCRIPT -->
+    <script>
+        /**
+         * INICIALIZACIÓN DE LA APLICACIÓN
+         * Se ejecuta cuando el DOM está completamente cargado
+         */
+        document.addEventListener('DOMContentLoaded', function() {
+            // 🔍 REFERENCIAS A ELEMENTOS DEL DOM
+            const cedulaForm = document.getElementById('cedulaForm');
+            const solicitudForm = document.getElementById('solicitudForm');
+            const cedulaFormContainer = document.getElementById('cedulaFormContainer');
+            const solicitudFormContainer = document.getElementById('solicitudFormContainer');
+            const successMessage = document.getElementById('successMessage');
+            const errorMessage = document.getElementById('errorMessage');
+            const errorText = document.getElementById('errorText');
+            const loadingElement = document.getElementById('loading');
+            const loadingText = document.getElementById('loadingText');
+            const fileInput = document.getElementById('soporte');
+            const filePreview = document.getElementById('filePreview');
+            const fileName = document.getElementById('fileName');
+            const tipoSolicitud = document.getElementById('tipoSolicitud');
+            const opcionesContainer = document.getElementById('opciones-container');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeModal = document.querySelector('.close');
+            const helpContent = document.getElementById('helpContent');
+            const soporteError = document.getElementById('soporteError');
+            
+            // 📁 MANEJADOR DE VISTA PREVIA DE ARCHIVOS
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    // MOSTRAR NOMBRE DEL ARCHIVO SELECCIONADO
+                    fileName.textContent = this.files[0].name;
+                    filePreview.style.display = 'block';
+                    soporteError.style.display = 'none';
+                } else {
+                    // OCULTAR VISTA PREVIA SI NO HAY ARCHIVO
+                    filePreview.style.display = 'none';
+                }
+            });
+            
+            // 📝 MANEJADOR DE ENVÍO DEL FORMULARIO DE CÉDULA
+            cedulaForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // EVITAR ENVÍO TRADICIONAL
+                
+                const cedula = document.getElementById('cedula').value;
+                const cedulaError = document.getElementById('cedulaError');
+                
+                // VALIDACIÓN BÁSICA DE CÉDULA
+                if (!cedula.trim()) {
+                    cedulaError.style.display = 'block';
+                    return;
+                } else {
+                    cedulaError.style.display = 'none';
+                }
+                
+                // MOSTRAR INDICADOR DE CARGA
+                loadingElement.style.display = 'block';
+                loadingText.textContent = 'Buscando información, por favor espere...';
+                successMessage.style.display = 'none';
+                errorMessage.style.display = 'none';
+                
+                // 🔄 LLAMADA ASÍNCRONA AL SERVIDOR PARA BUSCAR CÉDULA
+                google.script.run
+                    .withSuccessHandler(handleCedulaSuccess)   // MANEJADOR DE ÉXITO
+                    .withFailureHandler(handleCedulaFailure)   // MANEJADOR DE ERROR
+                    .buscarPorCedula(cedula);                  // FUNCIÓN DEL SERVIDOR
+            });
+            
+            /**
+             * MANEJADOR DE RESPUESTA EXITOSA DE BÚSQUEDA POR CÉDULA
+             * @param {Object} result - Resultado de la búsqueda
+             */
+            function handleCedulaSuccess(result) {
+                loadingElement.style.display = 'none';
+                
+                if (result.success) {
+                    // ✅ USUARIO ENCONTRADO - ACTUALIZAR INTERFAZ
+                    
+                    // ACTUALIZAR INFORMACIÓN VISIBLE DEL USUARIO
+                    document.getElementById('userNombre').textContent = result.data.nombre;
+                    document.getElementById('userCedula').textContent = result.data.cedula;
+                    document.getElementById('userCorreo').textContent = result.data.correo;
+                    document.getElementById('userCargo').textContent = result.data.cargo;
+                    document.getElementById('userJefe').textContent = result.data.jefe;
+                    
+                    // LLENAR CAMPOS OCULTOS CON DATOS DEL USUARIO
+                    document.getElementById('cedulaUsuario').value = result.data.cedula;
+                    document.getElementById('nombreUsuario').value = result.data.nombre;
+                    document.getElementById('correoUsuario').value = result.data.correo;
+                    document.getElementById('cargoUsuario').value = result.data.cargo;
+                    document.getElementById('jefeUsuario').value = result.data.jefe;
+                    document.getElementById('correoJefe').value = result.data.correoJefe;
+                    
+                    // MOSTRAR FORMULARIO DE SOLICITUD Y OCULTAR FORMULARIO DE CÉDULA
+                    cedulaFormContainer.style.display = 'none';
+                    solicitudFormContainer.style.display = 'block';
+                } else {
+                    // ❌ USUARIO NO ENCONTRADO - MOSTRAR ERROR
+                    errorText.textContent = result.message;
+                    errorMessage.style.display = 'block';
+                }
+            }
+            
+            /**
+             * MANEJADOR DE ERROR EN BÚSQUEDA POR CÉDULA
+             * @param {Object} error - Objeto de error
+             */
+            function handleCedulaFailure(error) {
+                loadingElement.style.display = 'none';
+                errorText.textContent = 'Error al buscar la cédula: ' + error.message;
+                errorMessage.style.display = 'block';
+            }
+            
+            // 🔄 MANEJADOR DE CAMBIO EN TIPO DE SOLICITUD
+            tipoSolicitud.addEventListener('change', function() {
+                const tipo = this.value;
+                opcionesContainer.innerHTML = ''; // LIMPIAR CONTENIDO ANTERIOR
+                
+                // GENERAR CAMPOS ESPECÍFICOS SEGÚN EL TIPO DE SOLICITUD
+                if (tipo === 'permisos') {
+                    opcionesContainer.innerHTML = `
+                        <div class="form-group">
+                            <label for="tipoPermiso">Tipo de permiso <span class="required">*</span></label>
+                            <select id="tipoPermiso" name="tipoPermiso" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Sufragio o voto">Sufragio o voto</option>
+                                <option value="Jurado de votación">Jurado de votación</option>
+                                <option value="Calamidad doméstica">Calamidad doméstica</option>
+                                <option value="Comisión sindical">Comisión sindical</option>
+                                <option value="Cita médica">Cita médica</option>
+                                <option value="Estudiantes">Estudiantes</option>
+                                <option value="Reunión de padres">Reunión de padres</option>
+                                <option value="Citación de padres">Citación de padres</option>
+                                <option value="Libreta militar">Libreta militar</option>
+                                <option value="Licencia de conducción">Licencia de conducción</option>
+                                <option value="Obligaciones escolares como acudiente">Obligaciones escolares como acudiente</option>
+                                <option value="Citaciones judiciales, administrativas y legales">Citaciones judiciales, administrativas y legales</option>
+                                <option value="Diligencias personales">Diligencias personales</option>
+                                <option value="Estudio">Estudio</option>
+                            </select>
+                            <div id="tipoPermisoError" class="error">Por favor seleccione un tipo de permiso</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaPermiso">Fecha del permiso <span class="required">*</span></label>
+                            <input type="date" id="fechaPermiso" name="fechaPermiso" required>
+                            <div id="fechaPermisoError" class="error">Por favor seleccione la fecha del permiso</div>
+                        </div>
+                        <div class="time-fields">
+                            <div class="form-group">
+                                <label for="horaInicioPermiso">Hora de inicio <span class="required">*</span></label>
+                                <input type="time" id="horaInicioPermiso" name="horaInicioPermiso" required>
+                                <div id="horaInicioPermisoError" class="error">Por favor seleccione la hora de inicio</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="horaFinPermiso">Hora de fin <span class="required">*</span></label>
+                                <input type="time" id="horaFinPermiso" name="horaFinPermiso" required>
+                                <div id="horaFinPermisoError" class="error">Por favor seleccione la hora de fin</div>
+                            </div>
+                        </div>
+                    `;
+                } 
+                else if (tipo === 'incapacidades') {
+                    opcionesContainer.innerHTML = `
+                        <div class="form-group">
+                            <label for="tipoIncapacidad">Tipo de incapacidad <span class="required">*</span></label>
+                            <select id="tipoIncapacidad" name="tipoIncapacidad" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Incapacidad por enfermedad general">Incapacidad por enfermedad general</option>
+                                <option value="Incapacidad por accidente laboral">Incapacidad por accidente laboral</option>
+                            </select>
+                            <div id="tipoIncapacidadError" class="error">Por favor seleccione un tipo de incapacidad</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaInicioIncapacidad">Fecha de inicio <span class="required">*</span></label>
+                            <input type="date" id="fechaInicioIncapacidad" name="fechaInicioIncapacidad" required>
+                            <div id="fechaInicioIncapacidadError" class="error">Por favor seleccione la fecha de inicio</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="fechaFinIncapacidad">Fecha de fin <span class="required">*</span></label>
+                            <input type="date" id="fechaFinIncapacidad" name="fechaFinIncapacidad" required>
+                            <div id="fechaFinIncapacidadError" class="error">Por favor seleccione la fecha de fin</div>
+                        </div>
+                    `;
+                } 
+                else if (tipo === 'licencias') {
+                    opcionesContainer.innerHTML = `
+                        <div class="form-group">
+                            <label for="tipoLicencia">Tipo de licencia <span class="required">*</span></label>
+                            <select id="tipoLicencia" name="tipoLicencia" required>
+                                <option value="">Seleccione una opción</option>
+                                <option value="Licencia de maternidad">Licencia de maternidad</option>
+                                <option value="Licencia de paternidad">Licencia de paternidad</option>
+                                <option value="Licencia por luto">Licencia por luto</option>
+                            </select>
+                            <div id="tipoLicenciaError" class="error">Por favor seleccione un tipo de licencia</div>
+                        </div>
+                    `;
+                }
+                
+                // ACTUALIZAR CONTENIDO DE AYUDA
+                updateHelpContent();
+            });
+            
+            // ❓ SISTEMA DE AYUDA PARA DOCUMENTOS REQUERIDOS
+            helpBtn.addEventListener('click', function() {
+                updateHelpContent();
+                helpModal.style.display = 'block';
+            });
+            
+            // 🚪 CERRAR MODAL DE AYUDA
+            closeModal.addEventListener('click', function() {
+                helpModal.style.display = 'none';
+            });
+            
+            // 🖱️ CERRAR MODAL AL HACER CLIC FUERA
+            window.addEventListener('click', function(event) {
+                if (event.target === helpModal) {
+                    helpModal.style.display = 'none';
+                }
+            });
+            
+            /**
+             * ACTUALIZA EL CONTENIDO DEL MODAL DE AYUDA SEGÚN LA SOLICITUD SELECCIONADA
+             */
+            function updateHelpContent() {
+                const tipoSolicitud = document.getElementById('tipoSolicitud').value;
+                const tipoDetalle = document.getElementById('tipoPermiso') ? document.getElementById('tipoPermiso').value :
+                                  document.getElementById('tipoIncapacidad') ? document.getElementById('tipoIncapacidad').value :
+                                  document.getElementById('tipoLicencia') ? document.getElementById('tipoLicencia').value : '';
+                
+                let content = '';
+                
+                // GENERAR CONTENIDO ESPECÍFICO SEGÚN EL TIPO DE SOLICITUD
+                if (!tipoSolicitud) {
+                    content = '<p>Seleccione un tipo de solicitud para ver los documentos requeridos.</p>';
+                } else if (tipoSolicitud === 'licencias') {
+                    if (tipoDetalle === 'Licencia de maternidad') {
+                        content = `
+                            <h4>Licencia de Maternidad</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Certificado nacido vivo</li>
+                                <li>Registro civil de nacimiento</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Licencia de paternidad') {
+                        content = `
+                            <h4>Licencia de Paternidad</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Certificado nacido vivo</li>
+                                <li>Registro civil de nacimiento</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Licencia por luto') {
+                        content = `
+                            <h4>Licencia por Luto</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Certificado de defunción</li>
+                                <li>Registro civil de nacimiento para probar el parentesco (abuelos, papá, mamá, hermanos)</li>
+                                <li>Certificado de matrimonio civil o religioso (cónyuge)</li>
+                                <li>Declaración notarial de convivencia (Requerido si el fallecido era tu compañero o compañera permanente)</li>
+                            </ul>
+                            <div class="highlight-box">
+                                <p><strong>Nota:</strong> La EPS tiene la obligación de prestar asesoría psicológica.</p>
+                            </div>
+                        `;
+                    } else {
+                        content = '<p>Seleccione un tipo de licencia específico para ver los documentos requeridos.</p>';
+                    }
+                } else if (tipoSolicitud === 'incapacidades') {
+                    content = `
+                        <h4>Incapacidades</h4>
+                        <p><strong>Documentos requeridos:</strong></p>
+                        <ul>
+                            <li>Incapacidad médica</li>
+                            <li>Historia clínica (si aplica)</li>
+                        </ul>
+                    `;
+                } else if (tipoSolicitud === 'permisos') {
+                    if (tipoDetalle === 'Estudiantes') {
+                        content = `
+                            <h4>Permisos Estudiantes</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Horario de clases</li>
+                                <li>Comprobante de pago de matrícula</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Cita médica') {
+                        content = `
+                            <h4>Cita con Especialista</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Cita programada en la EPS (correo electrónico o PDF)</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Reunión de padres') {
+                        content = `
+                            <h4>Permiso para Reunión de Padres</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Chat de WhatsApp o correo electrónico programando la reunión</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Citación de padres') {
+                        content = `
+                            <h4>Permiso para Citación de Padres</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Chat de WhatsApp o correo electrónico de la citación</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle === 'Libreta militar' || tipoDetalle === 'Licencia de conducción') {
+                        content = `
+                            <h4>Permiso para ${tipoDetalle}</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Cita programada por la entidad correspondiente</li>
+                            </ul>
+                        `;
+                    } else if (tipoDetalle) {
+                        content = `
+                            <h4>${tipoDetalle}</h4>
+                            <p><strong>Documentos requeridos:</strong></p>
+                            <ul>
+                                <li>Documento que justifique el motivo del permiso</li>
+                                <li>Si aplica, comprobante de la actividad o cita</li>
+                            </ul>
+                        `;
+                    } else {
+                        content = '<p>Seleccione un tipo de permiso específico para ver los documentos requeridos.</p>';
+                    }
+                }
+                
+                helpContent.innerHTML = content;
+            }
+            
+            // 📤 MANEJADOR DE ENVÍO DEL FORMULARIO DE SOLICITUD
+            solicitudForm.addEventListener('submit', function(e) {
+                e.preventDefault(); // EVITAR ENVÍO TRADICIONAL
+                
+                if (validateForm()) {
+                    // MOSTRAR INDICADOR DE CARGA
+                    loadingElement.style.display = 'block';
+                    loadingText.textContent = 'Generando PDF, adjuntando archivo y enviando solicitud, por favor espere...';
+                    successMessage.style.display = 'none';
+                    errorMessage.style.display = 'none';
+                    
+                    // OBTENER DATOS DEL FORMULARIO
+                    const formData = getFormData();
+                    
+                    // PROCESAR ARCHIVO ADJUNTO SI EXISTE
+                    const file = fileInput.files[0];
+                    
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = function(e) {
+                            // CONVERTIR ARCHIVO A BASE64
+                            const fileBytes = e.target.result.split(',')[1];
+                            const fileName = file.name;
+                            const fileType = file.type;
+                            
+                            // ENVIAR DATOS AL SERVIDOR
+                            google.script.run
+                                .withSuccessHandler(handleSuccess)
+                                .withFailureHandler(handleFailure)
+                                .processForm(formData, fileBytes, fileName, fileType);
+                        };
+                        reader.readAsDataURL(file);
+                    } else {
+                        // ENVIAR DATOS SIN ARCHIVO
+                        google.script.run
+                            .withSuccessHandler(handleSuccess)
+                            .withFailureHandler(handleFailure)
+                            .processForm(formData, null, '', '');
+                    }
+                }
+            });
+            
+            /**
+             * OBTIENE Y ESTRUCTURA LOS DATOS DEL FORMULARIO
+             * @returns {Object} Datos del formulario estructurados
+             */
+            function getFormData() {
+                const formData = {
+                    cedula: document.getElementById('cedulaUsuario').value,
+                    nombre: document.getElementById('nombreUsuario').value,
+                    correo: document.getElementById('correoUsuario').value,
+                    cargo: document.getElementById('cargoUsuario').value,
+                    jefe: document.getElementById('jefeUsuario').value,
+                    correoJefe: document.getElementById('correoJefe').value,
+                    tipoSolicitud: document.getElementById('tipoSolicitud').value,
+                    observaciones: document.getElementById('observaciones').value
+                };
+                
+                // AGREGAR DATOS ESPECÍFICOS SEGÚN EL TIPO DE SOLICITUD
+                if (formData.tipoSolicitud === 'permisos') {
+                    const select = document.getElementById('tipoPermiso');
+                    formData.tipoDetalle = select.value;
+                    formData.tipoDetalleTexto = select.options[select.selectedIndex].text;
+                    formData.fechaPermiso = document.getElementById('fechaPermiso').value;
+                    formData.horaInicioPermiso = document.getElementById('horaInicioPermiso').value;
+                    formData.horaFinPermiso = document.getElementById('horaFinPermiso').value;
+                } 
+                else if (formData.tipoSolicitud === 'incapacidades') {
+                    const select = document.getElementById('tipoIncapacidad');
+                    formData.tipoDetalle = select.value;
+                    formData.tipoDetalleTexto = select.options[select.selectedIndex].text;
+                    formData.fechaInicio = document.getElementById('fechaInicioIncapacidad').value;
+                    formData.fechaFin = document.getElementById('fechaFinIncapacidad').value;
+                } 
+                else if (formData.tipoSolicitud === 'licencias') {
+                    const select = document.getElementById('tipoLicencia');
+                    formData.tipoDetalle = select.value;
+                    formData.tipoDetalleTexto = select.options[select.selectedIndex].text;
+                }
+                
+                return formData;
+            }
+            
+            /**
+             * MANEJADOR DE RESPUESTA EXITOSA DEL ENVÍO
+             * @param {Object} result - Resultado del procesamiento
+             */
+            function handleSuccess(result) {
+                loadingElement.style.display = 'none';
+                
+                if (result.success) {
+                    // ✅ SOLICITUD ENVIADA EXITOSAMENTE
+                    successMessage.style.display = 'block';
+                    successMessage.scrollIntoView({ behavior: 'smooth' });
+                    solicitudForm.reset();
+                    filePreview.style.display = 'none';
+                    opcionesContainer.innerHTML = '';
+                    
+                    // OCULTAR MENSAJE DESPUÉS DE 5 SEGUNDOS Y VOLVER AL INICIO
+                    setTimeout(() => {
+                        successMessage.style.display = 'none';
+                        cedulaFormContainer.style.display = 'block';
+                        solicitudFormContainer.style.display = 'none';
+                        document.getElementById('cedula').value = '';
+                    }, 5000);
+                } else {
+                    // ❌ ERROR EN EL ENVÍO
+                    errorText.textContent = result.message;
+                    errorMessage.style.display = 'block';
+                }
+            }
+            
+            /**
+             * MANEJADOR DE ERROR EN EL ENVÍO
+             * @param {Object} error - Objeto de error
+             */
+            function handleFailure(error) {
+                loadingElement.style.display = 'none';
+                errorText.textContent = 'Error al enviar el formulario: ' + error.message;
+                errorMessage.style.display = 'block';
+            }
+            
+            /**
+             * VALIDA EL FORMULARIO COMPLETO
+             * @returns {boolean} True si el formulario es válido, False si no
+             */
+            function validateForm() {
+                let isValid = true;
+                
+                // VALIDAR TIPO DE SOLICITUD
+                const tipoSolicitud = document.getElementById('tipoSolicitud');
+                const tipoSolicitudError = document.getElementById('tipoSolicitudError');
+                if (!tipoSolicitud.value) {
+                    tipoSolicitudError.style.display = 'block';
+                    isValid = false;
+                } else {
+                    tipoSolicitudError.style.display = 'none';
+                }
+                
+                // VALIDAR OPCIONES ESPECÍFICAS SEGÚN EL TIPO
+                if (tipoSolicitud.value === 'permisos') {
+                    const tipoPermiso = document.getElementById('tipoPermiso');
+                    const tipoPermisoError = document.getElementById('tipoPermisoError');
+                    if (!tipoPermiso || !tipoPermiso.value) {
+                        tipoPermisoError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        tipoPermisoError.style.display = 'none';
+                    }
+                    
+                    const fechaPermiso = document.getElementById('fechaPermiso');
+                    const fechaPermisoError = document.getElementById('fechaPermisoError');
+                    if (!fechaPermiso || !fechaPermiso.value) {
+                        fechaPermisoError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        fechaPermisoError.style.display = 'none';
+                    }
+                    
+                    const horaInicioPermiso = document.getElementById('horaInicioPermiso');
+                    const horaInicioPermisoError = document.getElementById('horaInicioPermisoError');
+                    if (!horaInicioPermiso || !horaInicioPermiso.value) {
+                        horaInicioPermisoError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        horaInicioPermisoError.style.display = 'none';
+                    }
+                    
+                    const horaFinPermiso = document.getElementById('horaFinPermiso');
+                    const horaFinPermisoError = document.getElementById('horaFinPermisoError');
+                    if (!horaFinPermiso || !horaFinPermiso.value) {
+                        horaFinPermisoError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        horaFinPermisoError.style.display = 'none';
+                    }
+                    
+                    // VALIDACIÓN LÓGICA: HORA FIN POSTERIOR A HORA INICIO
+                    if (horaInicioPermiso.value && horaFinPermiso.value && horaInicioPermiso.value >= horaFinPermiso.value) {
+                        horaFinPermisoError.textContent = 'La hora de fin debe ser posterior a la hora de inicio';
+                        horaFinPermisoError.style.display = 'block';
+                        isValid = false;
+                    }
+                } 
+                else if (tipoSolicitud.value === 'incapacidades') {
+                    const tipoIncapacidad = document.getElementById('tipoIncapacidad');
+                    const tipoIncapacidadError = document.getElementById('tipoIncapacidadError');
+                    if (!tipoIncapacidad || !tipoIncapacidad.value) {
+                        tipoIncapacidadError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        tipoIncapacidadError.style.display = 'none';
+                    }
+                    
+                    const fechaInicio = document.getElementById('fechaInicioIncapacidad');
+                    const fechaInicioError = document.getElementById('fechaInicioIncapacidadError');
+                    if (!fechaInicio || !fechaInicio.value) {
+                        fechaInicioError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        fechaInicioError.style.display = 'none';
+                    }
+                    
+                    const fechaFin = document.getElementById('fechaFinIncapacidad');
+                    const fechaFinError = document.getElementById('fechaFinIncapacidadError');
+                    if (!fechaFin || !fechaFin.value) {
+                        fechaFinError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        fechaFinError.style.display = 'none';
+                    }
+                    
+                    // VALIDACIÓN LÓGICA: FECHA FIN POSTERIOR A FECHA INICIO
+                    if (fechaInicio.value && fechaFin.value && new Date(fechaInicio.value) > new Date(fechaFin.value)) {
+                        fechaFinError.textContent = 'La fecha de fin debe ser posterior a la fecha de inicio';
+                        fechaFinError.style.display = 'block';
+                        isValid = false;
+                    }
+                } 
+                else if (tipoSolicitud.value === 'licencias') {
+                    const tipoLicencia = document.getElementById('tipoLicencia');
+                    const tipoLicenciaError = document.getElementById('tipoLicenciaError');
+                    if (!tipoLicencia || !tipoLicencia.value) {
+                        tipoLicenciaError.style.display = 'block';
+                        isValid = false;
+                    } else {
+                        tipoLicenciaError.style.display = 'none';
+                    }
+                }
+                
+                // VALIDAR MOTIVO DE SOLICITUD
+                const observaciones = document.getElementById('observaciones');
+                const observacionesError = document.getElementById('observacionesError');
+                if (!observaciones.value.trim()) {
+                    observacionesError.style.display = 'block';
+                    isValid = false;
+                } else {
+                    observacionesError.style.display = 'none';
+                }
+                
+                // VALIDAR ARCHIVO ADJUNTO
+                if (!fileInput.files.length) {
+                    soporteError.style.display = 'block';
+                    isValid = false;
+                } else {
+                    soporteError.style.display = 'none';
+                }
+                
+                return isValid;
+            }
+        });
+    </script>
+</body>
+</html>
