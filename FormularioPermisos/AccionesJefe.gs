@@ -1,21 +1,7 @@
-/**
- * MÓDULO DE ACCIONES PARA JEFES
- * Maneja las acciones de aprobación y denegación de solicitudes
- * VERSIÓN MODIFICADA: Sin verificación de autenticación
- * Este módulo procesa las acciones que los jefes realizan desde los enlaces de correo
- */
-
-/**
- * Función principal que maneja las acciones de los jefes desde parámetros URL
- * @param {Object} e - Parámetros de la solicitud HTTP con action y id
- * @returns {HtmlService.HtmlOutput} Interfaz HTML según la acción solicitada
- */
 function manejarAccionJefe(e) {
-  // Extraer parámetros de la URL
-  var action = e.parameter.action;  // 'aprobar' o 'denegar'
-  var solicitudId = e.parameter.id; // ID único de la solicitud
+  var action = e.parameter.action;
+  var solicitudId = e.parameter.id;
   
-  // Redirigir según la acción solicitada
   if (action === 'aprobar') {
     return aprobarSolicitud(solicitudId);
   } else if (action === 'denegar') {
@@ -24,27 +10,19 @@ function manejarAccionJefe(e) {
     return mostrarDenegacionCompletada(solicitudId);
   }
   
-  // Redirección por defecto si la acción no es reconocida
   return HtmlService.createHtmlOutput('<script>window.location.href="' + ScriptApp.getService().getUrl() + '"</script>');
 }
 
-/**
- * Procesa la aprobación completa de una solicitud
- * VERSIÓN MODIFICADA: Sin verificación de permisos
- * @param {string} solicitudId - ID único de la solicitud a aprobar
- * @returns {HtmlService.HtmlOutput} Página de confirmación o error
- */
 function aprobarSolicitud(solicitudId) {
   try {
     Logger.log('=== APROBANDO SOLICITUD: ' + solicitudId + ' ===');
     
-    // 1. ACTUALIZAR ESTADO EN BASE DE DATOS - Cambiar a "Aprobado"
+    // 1. Actualizar estado en la base de datos
     BaseDatos.actualizarEstadoSolicitud(solicitudId, 'Aprobado');
     
-    // 2. OBTENER INFORMACIÓN COMPLETA DE LA SOLICITUD
+    // 2. Obtener información COMPLETA de la solicitud
     var solicitud = BaseDatos.obtenerSolicitudCompletaPorId(solicitudId);
     
-    // Validar que la solicitud existe
     if (!solicitud) {
       Logger.log('ERROR: Solicitud no encontrada');
       return HtmlService.createHtmlOutput('Error: Solicitud no encontrada');
@@ -52,32 +30,56 @@ function aprobarSolicitud(solicitudId) {
     
     Logger.log('Solicitud encontrada: ' + solicitud.nombre);
     
-    // 3. GENERAR PDF FORMAL DE LA SOLICITUD APROBADA
+    // 3. Generar PDF (se guardará automáticamente en la carpeta de PDFs)
     var pdfBlob = GeneradorPDF.generarPDFDesdeSolicitud(solicitud);
     
-    // 4. CONFIGURAR CORREO DE GESTIÓN (destinatario fijo)
+    // 4. CORREOS DE GESTIÓN
     var correosGestion = 'gestionhumana@constructoracentenario.com , ana.pelaez@constructoracentenario.com';
     
-    // 5. BUSCAR ARCHIVO ADJUNTO ORIGINAL EN GOOGLE DRIVE
+    // 5. Buscar archivo adjunto original en la nueva carpeta específica de archivos adjuntos
     var archivoAdjuntoOriginal = null;
-    if (solicitud.archivo && solicitud.archivo !== '') {
+    if (solicitud.archivo && solicitud.archivo !== '' && solicitud.tipoSolicitud !== 'compensacion') {
       try {
-        var files = DriveApp.getFilesByName(solicitud.archivo);
-        if (files.hasNext()) {
-          archivoAdjuntoOriginal = files.next();
+        // Buscar en la carpeta específica de archivos adjuntos
+        var folderIdAdjuntos = '15NmBvO7JlbrQqdUEl0YIM1XTLzW1dAAB';
+        var folderAdjuntos;
+        
+        try {
+          folderAdjuntos = DriveApp.getFolderById(folderIdAdjuntos);
+          var files = folderAdjuntos.getFilesByName(solicitud.archivo);
+          
+          if (files.hasNext()) {
+            archivoAdjuntoOriginal = files.next();
+            Logger.log('Archivo adjunto encontrado en carpeta de archivos adjuntos: ' + solicitud.archivo);
+          } else {
+            // Si no se encuentra en la carpeta específica, buscar en todo Drive
+            Logger.log('Buscando archivo en todo Drive: ' + solicitud.archivo);
+            var allFiles = DriveApp.getFilesByName(solicitud.archivo);
+            if (allFiles.hasNext()) {
+              archivoAdjuntoOriginal = allFiles.next();
+              Logger.log('Archivo adjunto encontrado en búsqueda global: ' + solicitud.archivo);
+            }
+          }
+        } catch (e) {
+          Logger.log('Error al acceder a carpeta de archivos adjuntos: ' + e.toString());
+          // Buscar en todo Drive como fallback
+          var allFiles = DriveApp.getFilesByName(solicitud.archivo);
+          if (allFiles.hasNext()) {
+            archivoAdjuntoOriginal = allFiles.next();
+          }
         }
       } catch (e) {
         Logger.log('Error al buscar archivo adjunto: ' + e.toString());
       }
     }
     
-    // 6. PREPARAR ADJUNTOS PARA GESTIÓN (PDF + archivo original)
+    // 6. Preparar adjuntos para gestión
     var adjuntosGestion = [pdfBlob];
     if (archivoAdjuntoOriginal) {
       adjuntosGestion.push(archivoAdjuntoOriginal);
     }
     
-    // 7. CREAR Y ENVIAR CORREO A GESTIÓN CON INFORMACIÓN COMPLETA
+    // 7. Enviar correo a gestión
     var mensajeAprobacion = `
     <h2>✅ Solicitud Aprobada</h2>
     <p>La siguiente solicitud ha sido <strong>APROBADA</strong> por el jefe inmediato:</p>
@@ -103,7 +105,6 @@ function aprobarSolicitud(solicitudId) {
     </ul>
     `;
     
-    // Envío del correo a gestión
     GmailApp.sendEmail(
       correosGestion,
       'Solicitud Aprobada - ' + solicitud.nombre,
@@ -117,7 +118,7 @@ function aprobarSolicitud(solicitudId) {
     
     Logger.log('Correo enviado a gestión: ' + correosGestion);
     
-    // 8. NOTIFICAR AL USUARIO SOLICITANTE SOBRE LA APROBACIÓN
+    // 8. NOTIFICAR AL USUARIO
     if (solicitud.correo && Validacion.validarCorreo(solicitud.correo)) {
       var mensajeUsuario = `
       <h2>✅ Su Solicitud ha sido Aprobada</h2>
@@ -151,7 +152,7 @@ function aprobarSolicitud(solicitudId) {
       Logger.log('Correo enviado al usuario: ' + solicitud.correo);
     }
     
-    // 9. MOSTRAR PÁGINA PARA ENVÍO DE CORREOS ADICIONALES
+    // 9. Mostrar página de éxito
     Logger.log('Mostrando página de envío adicional...');
     return mostrarPaginaEnvioAdicional(solicitudId);
     
@@ -161,31 +162,19 @@ function aprobarSolicitud(solicitudId) {
   }
 }
 
-/**
- * Muestra la interfaz para enviar correos adicionales después de aprobar
- * @param {string} solicitudId - ID de la solicitud recién aprobada
- * @returns {HtmlService.HtmlOutput} Página HTML para envíos adicionales
- */
 function mostrarPaginaEnvioAdicional(solicitudId) {
   var htmlOutput = HtmlService.createTemplateFromFile('PaginaEnvioAdicional');
   htmlOutput.solicitudId = solicitudId;
   return htmlOutput.evaluate();
 }
 
-/**
- * Envía copias de la solicitud aprobada a correos adicionales
- * VERSIÓN MODIFICADA: Sin verificación de permisos
- * @param {string} solicitudId - ID de la solicitud aprobada
- * @param {Array} correosAdicionales - Lista de correos para notificación
- * @returns {Object} Resultado del envío con estadísticas
- */
 function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
   try {
     Logger.log('=== ENVÍO REAL DE CORREOS ADICIONALES ===');
     Logger.log('solicitudId: ' + solicitudId);
     Logger.log('correosAdicionales: ' + JSON.stringify(correosAdicionales));
     
-    // 1. OBTENER INFORMACIÓN ACTUALIZADA DE LA SOLICITUD
+    // 1. Obtener información de la solicitud
     var solicitud = BaseDatos.obtenerSolicitudCompletaPorId(solicitudId);
     if (!solicitud) {
       Logger.log('ERROR: No se encontró la solicitud');
@@ -197,31 +186,54 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
     
     Logger.log('Solicitud encontrada: ' + solicitud.nombre);
     
-    // 2. GENERAR PDF PARA COMPARTIR
+    // 2. Generar PDF (se guardará automáticamente en la carpeta de PDFs)
     var pdfBlob = GeneradorPDF.generarPDFDesdeSolicitud(solicitud);
     Logger.log('PDF generado correctamente');
     
-    // 3. BUSCAR Y PREPARAR ARCHIVO ADJUNTO ORIGINAL
+    // 3. Buscar archivo adjunto original en la nueva carpeta específica de archivos adjuntos
     var archivoAdjuntoOriginal = null;
-    if (solicitud.archivo && solicitud.archivo.trim() !== '') {
+    if (solicitud.archivo && solicitud.archivo.trim() !== '' && solicitud.tipoSolicitud !== 'compensacion') {
       try {
-        var files = DriveApp.getFilesByName(solicitud.archivo);
-        if (files.hasNext()) {
-          archivoAdjuntoOriginal = files.next();
-          Logger.log('Archivo adjunto encontrado: ' + solicitud.archivo);
+        // Buscar en la carpeta específica de archivos adjuntos
+        var folderIdAdjuntos = '15NmBvO7JlbrQqdUEl0YIM1XTLzW1dAAB';
+        var folderAdjuntos;
+        
+        try {
+          folderAdjuntos = DriveApp.getFolderById(folderIdAdjuntos);
+          var files = folderAdjuntos.getFilesByName(solicitud.archivo);
+          
+          if (files.hasNext()) {
+            archivoAdjuntoOriginal = files.next();
+            Logger.log('Archivo adjunto encontrado en carpeta de archivos adjuntos: ' + solicitud.archivo);
+          } else {
+            // Si no se encuentra en la carpeta específica, buscar en todo Drive
+            Logger.log('Buscando archivo en todo Drive: ' + solicitud.archivo);
+            var allFiles = DriveApp.getFilesByName(solicitud.archivo);
+            if (allFiles.hasNext()) {
+              archivoAdjuntoOriginal = allFiles.next();
+              Logger.log('Archivo adjunto encontrado en búsqueda global: ' + solicitud.archivo);
+            }
+          }
+        } catch (e) {
+          Logger.log('Error al acceder a carpeta de archivos adjuntos: ' + e.toString());
+          // Buscar en todo Drive como fallback
+          var allFiles = DriveApp.getFilesByName(solicitud.archivo);
+          if (allFiles.hasNext()) {
+            archivoAdjuntoOriginal = allFiles.next();
+          }
         }
       } catch (e) {
         Logger.log('Error al buscar archivo adjunto: ' + e.toString());
       }
     }
     
-    // 4. PREPARAR PAQUETE DE ADJUNTOS
+    // 4. Preparar adjuntos
     var adjuntos = [pdfBlob];
     if (archivoAdjuntoOriginal) {
       adjuntos.push(archivoAdjuntoOriginal);
     }
     
-    // 5. CREAR MENSAJE INFORMATIVO PARA CORREOS ADICIONALES
+    // 5. Crear mensaje
     var mensajeAdicional = `
     <h2>📋 Copia de Solicitud Aprobada</h2>
     <p>Se le comparte una copia de la siguiente solicitud que ha sido <strong>APROBADA</strong>:</p>
@@ -253,7 +265,7 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
     </p>
     `;
     
-    // 6. PROCESAR ENVÍO A CADA CORREO ADICIONAL
+    // 6. Enviar correos
     var correosEnviados = [];
     var correosFallidos = [];
     
@@ -262,14 +274,14 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
       Logger.log('Enviando correo a: ' + correo);
       
       try {
-        // Validación básica de formato de correo
+        // Validación básica del correo
         if (!correo || correo.indexOf('@') === -1) {
           Logger.log('Correo inválido: ' + correo);
           correosFallidos.push(correo + ' (formato inválido)');
           continue;
         }
         
-        // ENVÍO REAL DEL CORREO CON ADJUNTOS
+        // ENVÍO REAL DEL CORREO
         GmailApp.sendEmail(
           correo,
           'Copia - Solicitud Aprobada - ' + solicitud.nombre,
@@ -284,7 +296,7 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
         correosEnviados.push(correo);
         Logger.log('✓ Correo enviado exitosamente a: ' + correo);
         
-        // Pequeña pausa entre envíos para evitar límites de Gmail
+        // Pequeña pausa entre envíos para evitar límites
         if (i < correosAdicionales.length - 1) {
           Utilities.sleep(1000); // 1 segundo de pausa
         }
@@ -295,7 +307,7 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
       }
     }
     
-    // 7. PREPARAR RESULTADO DETALLADO DEL ENVÍO
+    // 7. Preparar resultado
     var resultado = {
       success: true,
       message: 'Correos enviados exitosamente',
@@ -306,7 +318,7 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
       }
     };
     
-    // Ajustar mensaje según los resultados obtenidos
+    // Ajustar mensaje según resultados
     if (correosEnviados.length === 0 && correosFallidos.length > 0) {
       resultado.success = false;
       resultado.message = 'No se pudo enviar a ningún correo';
@@ -330,10 +342,6 @@ function enviarCorreosAdicionales(solicitudId, correosAdicionales) {
   }
 }
 
-/**
- * Función de prueba para verificar conectividad con el servidor
- * @returns {Object} Resultado de la prueba de conexión
- */
 function probarConexionSimple() {
   Logger.log('=== PRUEBA CONEXIÓN SIMPLE ===');
   return {
@@ -343,12 +351,6 @@ function probarConexionSimple() {
   };
 }
 
-/**
- * Muestra formulario para ingresar motivo de denegación
- * VERSIÓN MODIFICADA: Sin verificación de permisos
- * @param {string} solicitudId - ID de la solicitud a denegar
- * @returns {HtmlService.HtmlOutput} Formulario HTML para denegación
- */
 function mostrarFormularioDenegacion(solicitudId) {
   var baseUrl = ScriptApp.getService().getUrl();
   
@@ -490,29 +492,22 @@ function mostrarFormularioDenegacion(solicitudId) {
   return HtmlService.createHtmlOutput(html);
 }
 
-/**
- * Procesa la denegación de una solicitud con motivo específico
- * VERSIÓN MODIFICADA: Sin verificación de permisos
- * @param {string} solicitudId - ID de la solicitud a denegar
- * @param {string} motivo - Motivo detallado de la denegación
- * @returns {Object} Resultado del proceso de denegación
- */
 function denegarSolicitud(solicitudId, motivo) {
   try {
     Logger.log('Denegando solicitud: ' + solicitudId + ' con motivo: ' + motivo);
     
-    // 1. ACTUALIZAR ESTADO EN BASE DE DATOS - Cambiar a "Denegado" con motivo
+    // Actualizar estado en la base de datos
     BaseDatos.actualizarEstadoSolicitud(solicitudId, 'Denegado', motivo);
     
-    // 2. OBTENER INFORMACIÓN DE LA SOLICITUD PARA NOTIFICACIÓN
+    // Obtener información de la solicitud
     var solicitud = BaseDatos.obtenerSolicitudPorId(solicitudId);
     
     if (solicitud) {
-      // 3. GENERAR PDF FORMAL DE LA SOLICITUD DENEGADA
+      // Generar PDF de la solicitud denegada (se guardará automáticamente en la carpeta de PDFs)
       var pdfBlob = GeneradorPDF.generarPDFDenegada(solicitud, motivo);
       
-      // 4. NOTIFICAR AL USUARIO SOLICITANTE SOBRE LA DENEGACIÓN
       if (solicitud.correo && Validacion.validarCorreo(solicitud.correo)) {
+        // Enviar correo al usuario notificando la denegación
         var mensajeDenegacion = `
         <h2>❌ Su Solicitud ha sido Denegada</h2>
         <p>Estimado/a ${solicitud.nombre},</p>
@@ -563,11 +558,6 @@ function denegarSolicitud(solicitudId, motivo) {
   }
 }
 
-/**
- * Muestra página de confirmación después de denegar una solicitud
- * @param {string} solicitudId - ID de la solicitud denegada
- * @returns {HtmlService.HtmlOutput} Página de confirmación
- */
 function mostrarDenegacionCompletada(solicitudId) {
   return HtmlService.createHtmlOutput(`
     <!DOCTYPE html>

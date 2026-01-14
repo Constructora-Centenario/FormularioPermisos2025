@@ -1,28 +1,13 @@
-/**
- * MÓDULO DE PROCESAMIENTO DE FORMULARIOS
- * Coordina el flujo completo de procesamiento de solicitudes
- * Incluye: validación, guardado, generación de PDF y envío de correos
- */
-
 var ProcesamientoFormulario = (function() {
   
-  /**
-   * Procesa el formulario completo de solicitud
-   * @param {Object} formData - Datos del formulario
-   * @param {string} fileBytes - Archivo en base64
-   * @param {string} fileName - Nombre del archivo
-   * @param {string} fileType - Tipo MIME del archivo
-   * @returns {Object} Resultado del procesamiento
-   */
   function processForm(formData, fileBytes, fileName, fileType) {
     try {
-      // 1. INICIALIZAR HOJAS DE BASE DE DATOS
+      // Inicializar hojas primero
       BaseDatos.inicializarHojas();
       
-      // 2. CONFIGURACIÓN DE DESTINATARIOS
+      // Configuración de destinatarios - ahora usa el correo del jefe desde la base de datos
       var destinatarios = formData.correoJefe;
       
-      // Validar que exista correo del jefe
       if (!destinatarios) {
         return {
           success: false,
@@ -38,38 +23,40 @@ var ProcesamientoFormulario = (function() {
         };
       }
       
-      // 3. GENERAR ID ÚNICO PARA LA SOLICITUD
+      // Generar un ID único para esta solicitud
       var solicitudId = Utilities.getUuid();
       
-      // 4. PROCESAR ARCHIVO ADJUNTO
+      // Guardar archivo adjunto en Drive de forma PERMANENTE en la carpeta específica
       var archivoAdjunto = null;
       var fileUrl = '';
-      if (fileBytes && fileName) {
+      if (fileBytes && fileName && formData.tipoSolicitud !== 'compensacion') {
         try {
-          // Convertir base64 a blob
           var blob = Utilities.newBlob(Utilities.base64Decode(fileBytes), fileType, fileName);
           
-          // Crear o obtener carpeta para archivos
-          var folderName = 'Solicitudes_Archivos';
-          var folders = DriveApp.getFoldersByName(folderName);
-          var folder;
+          // Obtener carpeta específica para archivos adjuntos
+          var folderIdAdjuntos = '15NmBvO7JlbrQqdUEl0YIM1XTLzW1dAAB';
+          var folderAdjuntos;
           
-          if (folders.hasNext()) {
-            folder = folders.next();
-          } else {
-            folder = DriveApp.createFolder(folderName);
+          try {
+            folderAdjuntos = DriveApp.getFolderById(folderIdAdjuntos);
+            Logger.log('Carpeta de archivos adjuntos encontrada: ' + folderAdjuntos.getName());
+          } catch (e) {
+            Logger.log('Error al acceder a la carpeta de archivos adjuntos: ' + e.toString());
+            // Intentar crear una carpeta de respaldo si no existe
+            folderAdjuntos = DriveApp.createFolder('Solicitudes_Archivos_Backup');
+            Logger.log('Carpeta de respaldo creada: ' + folderAdjuntos.getName());
           }
           
-          // Guardar archivo permanentemente
-          var file = folder.createFile(blob);
+          // Crear archivo en la carpeta específica
+          var file = folderAdjuntos.createFile(blob);
           archivoAdjunto = file;
           fileUrl = file.getUrl();
           
-          Logger.log('Archivo guardado permanentemente: ' + fileName + ' - URL: ' + fileUrl);
+          Logger.log('Archivo guardado en carpeta de archivos adjuntos: ' + fileName + ' - URL: ' + fileUrl);
           
         } catch (e) {
-          Logger.log('Error al guardar archivo permanentemente: ' + e.toString());
-          // Fallback: guardar en root
+          Logger.log('Error al guardar archivo en carpeta de adjuntos: ' + e.toString());
+          // Intentar guardar en root como fallback
           try {
             var blob = Utilities.newBlob(Utilities.base64Decode(fileBytes), fileType, fileName);
             var file = DriveApp.getRootFolder().createFile(blob);
@@ -81,38 +68,36 @@ var ProcesamientoFormulario = (function() {
         }
       }
       
-      // 5. GENERAR PDF CON LOS DATOS
+      // Crear PDF con los datos del formulario
       var pdfBlob = GeneradorPDF.generarPDF(formData, fileName);
       
-      // 6. GUARDAR EN BASE DE DATOS
+      // Guardar información de la solicitud para referencia futura (incluyendo nombre del archivo)
       BaseDatos.guardarSolicitud(solicitudId, formData, fileName);
       
-      // 7. CREAR MENSAJE DE CORREO CON BOTONES DE ACCIÓN
+      // Crear el cuerpo del mensaje con botones de aprobación
       var mensaje = Email.crearMensajeConBotones(formData, fileName, solicitudId);
       
-      // 8. PREPARAR ADJUNTOS PARA EL JEFE
+      // Preparar adjuntos para el jefe (PDF + archivo adjunto original)
       var adjuntosJefe = [pdfBlob];
       if (archivoAdjunto) {
         adjuntosJefe.push(archivoAdjunto);
       }
       
-      // 9. ENVIAR CORREO AL JEFE INMEDIATO
+      // Enviar correo con PDF + archivo adjunto al jefe
       GmailApp.sendEmail(destinatarios, 
                         'Solicitud de ' + formData.tipoSolicitud + ' - ' + formData.nombre, 
                         'Por favor ver el contenido HTML para revisar esta solicitud.', {
         htmlBody: mensaje,
         name: 'Sistema de Solicitudes',
-        attachments: adjuntosJefe
+        attachments: adjuntosJefe // Envía PDF + archivo al jefe
       });
       
-      // 10. RETORNAR RESULTADO EXITOSO
       return {
         success: true,
-        message: 'Solicitud enviada correctamente al jefe inmediato' + (fileName ? ' con archivo adjunto: ' + fileName : '')
+        message: 'Solicitud enviada correctamente al jefe inmediato' + (fileName && formData.tipoSolicitud !== 'compensacion' ? ' con archivo adjunto: ' + fileName : '')
       };
       
     } catch (error) {
-      // MANEJO DE ERRORES
       Logger.log('Error en processForm: ' + error.toString());
       return {
         success: false,
@@ -121,7 +106,6 @@ var ProcesamientoFormulario = (function() {
     }
   }
   
-  // EXPORTAR FUNCIONALIDAD
   return {
     processForm: processForm
   };

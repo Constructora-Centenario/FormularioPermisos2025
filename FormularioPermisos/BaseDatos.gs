@@ -7,7 +7,7 @@
 var BaseDatos = (function() {
   
   // ID de la spreadsheet principal - MODIFICAR SEGÚN SEA NECESARIO
-  var SPREADSHEET_ID = '1IQQTx9ml2oCv0co56TxNn8PHVEYR4eGvPUlEsu1mZHg';
+  var SPREADSHEET_ID = '1RMKShs6hRgFKtM8GnornriFWqfcGJ7kFhsW_r4dni_g';
   
   /**
    * Obtiene la instancia de la spreadsheet

@@ -92,6 +92,14 @@ SistemaSolicitudes/
 5. **Haz click en "Deploy"**
 6. **Copia la URL** de la web app generada
 
+## 📁 Guardado de archivos
+
+Los archivos se guardan automaticamente en una carpeta de drive con propiedad de fabio.caro@constructoracentenario.com o del administrador del servidor.
+
+# Carpeta de Solicitudes: https://drive.google.com/drive/folders/1OSbIXHFema1VYusyTctCCpwoRTpgm_8T?usp=drive_link
+
+# Carpeta de archivos adjuntos: https://drive.google.com/drive/folders/15NmBvO7JlbrQqdUEl0YIM1XTLzW1dAAB?usp=drive_link
+
 ## 🎯 Manual de Uso
 
 ### Para Empleados (Solicitantes)
@@ -110,11 +118,13 @@ SistemaSolicitudes/
    - Permisos
    - Incapacidades  
    - Licencias
+   - Compensación
 
 2. **Completa los campos específicos** según el tipo:
    - **Permisos**: Fecha, horario, tipo de permiso
    - **Incapacidades**: Fechas de inicio y fin
    - **Licencias**: Tipo de licencia
+   - **Compensación**: Motivo de compensación
 
 3. **Describe el motivo** detalladamente
 
